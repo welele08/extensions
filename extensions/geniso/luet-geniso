@@ -13,7 +13,7 @@ export LUET_CONFIG="${LUET_CONFIG:-../conf/luet-local.yaml}"
 export WORKDIR="$ROOT_DIR/isowork"
 export OVERLAY="${OVERLAY:-false}"
 export FIRMWARE_TYPE="${FIRMWARE_TYPE:-both}"
-
+export CA_CERTIFICATES="${CA_CERTIFICATES:-/etc/ssl/certs/ca-certificates.crt}"
 export ARCH="${ARCH:-x86_64}"
 export ISOIMAGE_PACKAGES="${ISOIMAGE_PACKAGES:-live/syslinux system/sabayon-live-boot}"
 export UEFI_PACKAGES="${UEFI_PACKAGES:-live/systemd-boot system/sabayon-live-boot}"
@@ -68,15 +68,17 @@ luet_install() {
   sudo mount --bind /proc $rootfs/proc/
   sudo mount --bind /dev/pts $rootfs/dev/pts
 
+  # Required to connect to remote repositories
+  if [ ! -f "etc/resolv.conf" ]; then
+    echo "nameserver 8.8.8.8" > etc/resolv.conf
+  fi
+  if [ ! -f "etc/ssl/certs/ca-certificates.crt" ]; then
+    mkdir -p etc/ssl/certs
+    cp -rfv "${CA_CERTIFICATES}" etc/ssl/certs
+  fi
+
   sudo chroot . /luet install ${packages}
   sudo chroot . /luet cleanup
-
-  if [ ! -f "etc/ssl/certs/ca-certificates.crt" ]; then
-    # Required to connect to remote repositories
-    echo "nameserver 8.8.8.8" > etc/resolv.conf
-    mkdir -p etc/ssl/certs
-    cp -rfv /etc/ssl/certs/ca-certificates.crt etc/ssl/certs
-  fi
 
   # Cleanup/umount
   umount_rootfs $rootfs || true
@@ -86,7 +88,7 @@ luet_install() {
 
 }
 
-trap cleanup 1 2 3 6
+trap cleanup 1 2 3 6 EXIT
 
 cleanup()
 {
