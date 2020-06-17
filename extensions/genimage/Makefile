@@ -1,6 +1,6 @@
 UBINDIR ?= /usr/bin
 SHAREDIR ?= /usr/share
-DESTDIR = 
+DESTDIR ?=
 
 all: build install
 

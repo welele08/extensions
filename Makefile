@@ -1,6 +1,6 @@
 BUNDLED_EXTENSIONS = autobump-github geniso genimage
 UBINDIR ?= /usr/bin
-DESTDIR = 
+DESTDIR ?= 
 
 all: build
 

@@ -1,5 +1,5 @@
 UBINDIR ?= /usr/bin
-DESTDIR = 
+DESTDIR ?=
 
 all: build install
 
