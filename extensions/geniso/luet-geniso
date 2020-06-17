@@ -29,6 +29,7 @@ export FIRST_STAGE="${FIRST_STAGE:-distro/seed}"
 
 export GEN_ROOTFS="${GEN_ROOTFS:-true}"
 
+export SCRIPT_DIR="${SCRIPT_DIR:-/usr/share/luet-extension/geniso}"
 
 umount_rootfs() {
   local rootfs=$1
@@ -128,7 +129,7 @@ fi
 
 set +x
 
-for script in $(ls /usr/share/luet-extension/geniso | grep '^[0-9]*_.*.sh'); do
+for script in $(ls ${SCRIPT_DIR} | grep '^[0-9]*_.*.sh'); do
   echo "Executing script '$script'."
-  /usr/share/luet-extension/geniso/$script
+  ${SCRIPT_DIR}/$script
 done

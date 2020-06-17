@@ -1,10 +1,11 @@
 UBINDIR ?= /usr/bin
 SHAREDIR ?= /usr/share
-DESTDIR = 
+DESTDIR ?=
 
 all: build install
 
 build:
+	@sed luet-geniso  -e 's|export SCRIPT_DIR.*|export SCRIPT_DIR="$$\{SCRIPT_DIR:-$(DESTDIR)/$(SHAREDIR)/luet-extension/geniso}"|g' -i
 	@echo "Nothing to build"
 
 install: build
