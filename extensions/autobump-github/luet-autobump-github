@@ -11,7 +11,7 @@ AUTO_GIT="${AUTO_GIT:-false}"
 START_GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 HUB_ARGS="${HUB_ARGS:--b $START_GIT_BRANCH}"
 ROOT_DIR="${ROOT_DIR:-$PWD}"
-TREE_DIR="${TREE_DIR:-$TREE_DIR/packages}"
+TREE_DIR="${TREE_DIR:-$ROOT_DIR/packages}"
 
 # Fetch depedendencies if not available
 PATH=$PATH:$ROOT_DIR/.bin
