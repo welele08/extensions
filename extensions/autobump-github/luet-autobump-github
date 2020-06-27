@@ -62,6 +62,10 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
     # A json map of replace rules
     STRING_REPLACE=$(yq r $PACKAGE_PATH/definition.yaml 'labels."autobump.string_replace"')
 
+
+    # A json list of strings contained in the releases to skip (e.g. betas)
+    SKIP_IF_CONTAIN=$(yq r $PACKAGE_PATH/definition.yaml 'labels."autobump.skip_if_contains"')
+
     # You can specify a string match that should be contained in the versions
     # to be considered. Valid for "refs" and tagging strategy
     VERSION_CONTAINS=$(yq r $PACKAGE_PATH/definition.yaml 'labels."autobump.version_contains"')
@@ -81,6 +85,13 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
         WITH=$(echo "$STRING_REPLACE" | jq -r '."'$i'"')
         echo "Replacing $i with '$WITH'"
         LATEST_TAG=$(echo "$LATEST_TAG" | sed -r 's/'$i'+/'$WITH'/g')
+    done
+
+    for i in $(echo "$SKIP_IF_CONTAIN" | jq -r '.[]'); do
+        if [[ "$LATEST_TAG"  =~ "$i" ]]; then
+            echo "Skipping because latest release contains '$i'"
+            continue 2
+        fi
     done
 
     echo "Latest tag for $PACKAGE_NAME is $LATEST_TAG"
