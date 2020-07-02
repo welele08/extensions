@@ -32,10 +32,11 @@ export GEN_ROOTFS="${GEN_ROOTFS:-true}"
 export SCRIPT_DIR="${SCRIPT_DIR:-/usr/share/luet-extension/geniso}"
 
 umount_rootfs() {
+  set +e
   local rootfs=$1
   #sudo umount -l $rootfs/boot
-  sudo umount -l $rootfs/dev/pts
 
+  sudo umount -l $rootfs/dev/pts
   sudo umount -l $rootfs/dev/
   sudo umount -l $rootfs/sys/
   sudo umount -l $rootfs/proc/
@@ -97,24 +98,24 @@ cleanup()
    umount_rootfs  "$OVERLAY_DIR"
 }
 
-
+cleanup
 
 if [[ "$GEN_ROOTFS" == true ]]; then
 
-mkdir -p $WORKDIR
+  mkdir -p $WORKDIR
 
-rm -rf "$ROOTFS_DIR"
-mkdir -p "$ROOTFS_DIR"
+  rm -rf "$ROOTFS_DIR"
+  mkdir -p "$ROOTFS_DIR"
 
-rm -rf "$OVERLAY_DIR"
-mkdir -p "$OVERLAY_DIR"
+  rm -rf "$OVERLAY_DIR"
+  mkdir -p "$OVERLAY_DIR"
 
-echo "Initial root:"
-ls -liah  "$ROOTFS_DIR"
-ls -liah  "$OVERLAY_DIR"
+  echo "Initial root:"
+  ls -liah  "$ROOTFS_DIR"
+  ls -liah  "$OVERLAY_DIR"
 
 
-set -ex
+  set -e
 
 
   if [[ "$OVERLAY" == true ]]; then
@@ -126,8 +127,6 @@ set -ex
   fi
 
 fi
-
-set +x
 
 for script in $(ls ${SCRIPT_DIR} | grep '^[0-9]*_.*.sh'); do
   echo "Executing script '$script'."
