@@ -138,5 +138,8 @@ fi
 
 for script in $(ls ${SCRIPT_DIR} | grep '^[0-9]*_.*.sh'); do
   echo "Executing script '$script'."
-  ${SCRIPT_DIR}/$script
+  ${SCRIPT_DIR}/$script || {
+    echo "${script}: Something goes wrong! Exiting."
+    exit 1
+  }
 done
