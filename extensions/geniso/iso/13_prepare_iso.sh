@@ -15,7 +15,7 @@ system:
 EOF
 
   [ -n "${LUET_REPOS}" ] && \
-    ${LUET_BIN} --config "$rootfs/luet.yaml" ${LUET_REPOS}
+    ${LUET_BIN} install --config "$rootfs/luet.yaml" ${LUET_REPOS}
 
   ${LUET_BIN} install  --config "$rootfs/luet.yaml" ${packages}
   rm -rfv "$rootfs/luetdb"
