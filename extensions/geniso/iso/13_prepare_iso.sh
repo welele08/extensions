@@ -10,11 +10,11 @@ luet_install() {
   cat <<EOF >> "$rootfs/luet.yaml"
 system:
   rootfs: $rootfs
+  database_path: "/luetdb"
+  database_engine: "boltdb"
 repos_confdir:
   - $rootfs/etc/luet/repos.conf.d
 
-  database_path: "/luetdb"
-  database_engine: "boltdb"
 EOF
 
   [ -n "${LUET_REPOS}" ] && \
