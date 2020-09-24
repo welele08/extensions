@@ -13,6 +13,10 @@ system:
   database_path: "/luetdb"
   database_engine: "boltdb"
 EOF
+
+  [ -n "${LUET_REPOS}" ] && \
+    ${LUET_BIN} --config "$rootfs/luet.yaml" ${LUET_REPOS}
+
   ${LUET_BIN} install  --config "$rootfs/luet.yaml" ${packages}
   rm -rfv "$rootfs/luetdb"
   rm -rfv "$rootfs/luet.yaml"
@@ -62,7 +66,7 @@ prepare_boot_bios() {
   # you may not end up with UEFI shell even if your system supports it.
   # In this case MLL will not boot and you will end up with some kind of
   # UEFI error message.
- 
+
   luet_install $ISOIMAGE "$ISOIMAGE_PACKAGES"
 }
 
