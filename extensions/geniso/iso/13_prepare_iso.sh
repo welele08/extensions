@@ -10,6 +10,9 @@ luet_install() {
   cat <<EOF >> "$rootfs/luet.yaml"
 system:
   rootfs: $rootfs
+repos_confdir:
+  - $rootfs/etc/luet/repos.conf.d
+
   database_path: "/luetdb"
   database_engine: "boltdb"
 EOF
@@ -20,6 +23,7 @@ EOF
   ${LUET_BIN} install  --config "$rootfs/luet.yaml" ${packages}
   rm -rfv "$rootfs/luetdb"
   rm -rfv "$rootfs/luet.yaml"
+  rm -rfv "$rootfs/luet/repos.conf.d"
 }
 
 init() {
