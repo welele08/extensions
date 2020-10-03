@@ -2,6 +2,8 @@
 
 set -ex
 
+LOOP_DEVICE_HDD=""
+
 luet_install() {
   local rootfs=$1
   local packages="$2"
@@ -154,6 +156,23 @@ CEOF
     exit 1
   fi
 }
+
+cleanup_on_exit () {
+  [ -z "${LOOP_DEVICE_HDD}" ] || {
+
+    losetup -d ${LOOP_DEVICE_HDD} || {
+
+      echo "ATTENTION: Something goes wrong on detach loopback device ${LOOP_DEVICE_HDD}."
+      echo "Ignoring it for now."
+
+    }
+
+  }
+
+  return 0
+}
+
+trap "cleanup_on_exit" EXIT INT TERM
 
 echo "*** PREPARE ISO BEGIN ***"
 
