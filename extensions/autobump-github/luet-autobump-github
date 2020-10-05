@@ -70,12 +70,14 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
     # to be considered. Valid for "refs" and tagging strategy
     VERSION_CONTAINS=$(yq r $PACKAGE_PATH/definition.yaml 'labels."autobump.version_contains"')
 
+    AUTOBUMP_REFIX=$(yq r $PACKAGE_PATH/definition.yaml 'labels."autobump.prefix"')
+    SNAPSHOT_PREFIX=${AUTOBUMP_REFIX:-0.}
     if [[ "$AUTOBUMP_STRATEGY" == "release" ]]; then
         LATEST_TAG=$(curl https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest -s | jq .tag_name -r)
     elif [[ "$AUTOBUMP_STRATEGY" == "refs" ]]; then
         LATEST_TAG=$(curl https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/git/refs/tags -s | jq '.[].ref | sub("refs\/tags\/"; "") | select(. | test("'$VERSION_CONTAINS'"))' -r | tail -n1 )
     elif [[ "$AUTOBUMP_STRATEGY" == "snapshot" ]]; then
-        LATEST_TAG=0.$(date +%Y%m%d)
+        LATEST_TAG=${SNAPSHOT_PREFIX}$(date +%Y%m%d)
     else
         LATEST_TAG=$(curl https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/tags -s | jq -r '.[].name | select(. | test("'$VERSION_CONTAINS'"))' -r | head -1 )
     fi
