@@ -1,6 +1,6 @@
-BUNDLED_EXTENSIONS = autobump-github geniso genimage
+BUNDLED_EXTENSIONS = autobump-github geniso genimage qa-artefacts
 UBINDIR ?= /usr/bin
-DESTDIR ?= 
+DESTDIR ?=
 
 all: build
 

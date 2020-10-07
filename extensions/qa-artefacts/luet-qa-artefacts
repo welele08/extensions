@@ -1,0 +1,35 @@
+#!/bin/bash
+# qa-artefacts script by Ettore Di Giacinto <mudler@sabayonlinux.org>,
+# License: MIT
+
+ROOT_DIR="${ROOT_DIR:-$PWD}"
+
+PATH=$PATH:$ROOT_DIR/.bin/
+
+hash yq 2>/dev/null || {
+    [ !-d $ROOT_DIR/.bin ] && mkdir $ROOT_DIR/.bin/
+    echo "Installing yq"
+    wget https://github.com/mikefarah/yq/releases/download/3.3.0/yq_linux_amd64 -O $ROOT_DIR/.bin/yq --quiet
+    chmod +x $ROOT_DIR/.bin/yq
+}
+
+hash jq 2>/dev/null || {
+    [ !-d $ROOT_DIR/.bin ] && mkdir $ROOT_DIR/.bin/
+    echo "Installing jq"
+    wget https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64 -O $ROOT_DIR/.bin/jq --quiet
+    chmod +x $ROOT_DIR/.bin/jq
+}
+
+for yaml in $ROOT_DIR/*.metadata.yaml; do
+  checksum=$(yq r $yaml 'checksums.sha256')
+  path=$(yq r $yaml 'path')
+  relpath=$(basename $path)
+  #echo "Checksum $checksum for $yaml at $ROOT_DIR/$relpath"
+  calculated_sha=$(sha256sum $ROOT_DIR/$relpath | awk '{print $1}')
+  if [ "$calculated_sha" != "$checksum" ]; then
+    echo "Failed checksum QA on $ROOT_DIR/$relpath. Metadata at $yaml report $checksum, calculated is: $calculated_sha"
+    exit 1
+  else
+    echo "$ROOT_DIR/$relpath - OK"
+  fi
+done
