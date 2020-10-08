@@ -32,16 +32,17 @@ export FIRST_STAGE="${FIRST_STAGE:-distro/seed}"
 export GEN_ROOTFS="${GEN_ROOTFS:-true}"
 
 export SCRIPT_DIR="${SCRIPT_DIR:-/usr/share/luet-extension/geniso}"
+export SUDO=${SUDO:-}
 
 umount_rootfs() {
   set +e
   local rootfs=$1
-  #sudo umount -l $rootfs/boot
+  #${SUDO} umount -l $rootfs/boot
 
-  sudo umount -l $rootfs/dev/pts
-  sudo umount -l $rootfs/dev/
-  sudo umount -l $rootfs/sys/
-  sudo umount -l $rootfs/proc/
+  ${SUDO} umount -l $rootfs/dev/pts
+  ${SUDO} umount -l $rootfs/dev/
+  ${SUDO} umount -l $rootfs/sys/
+  ${SUDO} umount -l $rootfs/proc/
 }
 
 # TODO: replace with luet box exec
@@ -67,10 +68,10 @@ luet_install() {
   mkdir -p dev/pts
   cp -rfv "${LUET_CONFIG}" etc/luet/luet.yaml
   cp -rfv "${LUET_BIN}" luet
-  sudo mount --bind /dev $rootfs/dev/
-  sudo mount --bind /sys $rootfs/sys/
-  sudo mount --bind /proc $rootfs/proc/
-  sudo mount --bind /dev/pts $rootfs/dev/pts
+  ${SUDO} mount --bind /dev $rootfs/dev/
+  ${SUDO} mount --bind /sys $rootfs/sys/
+  ${SUDO} mount --bind /proc $rootfs/proc/
+  ${SUDO} mount --bind /dev/pts $rootfs/dev/pts
 
   # Required to connect to remote repositories
   if [ ! -f "etc/resolv.conf" ]; then
@@ -84,16 +85,17 @@ luet_install() {
   if [ "${LUET_REPOS}" != "" ] ; then
     # Install repositories packages before install
     # needed packages
-    sudo chroot . /luet install ${LUET_REPOS}
+    ${SUDO} chroot . /luet install ${LUET_REPOS}
   fi
 
-  sudo chroot . /luet install ${packages}
-  sudo chroot . /luet cleanup
+  ${SUDO} chroot . /luet config
+  ${SUDO} chroot . /luet install ${packages}
+  ${SUDO} chroot . /luet cleanup
 
   # Cleanup/umount
   umount_rootfs $rootfs || true
 
-  sudo rm -rf luet
+  ${SUDO} rm -rf luet
   popd
 
 }
