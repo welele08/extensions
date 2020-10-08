@@ -23,6 +23,8 @@ EOF
     ${LUET_BIN} install --config "$rootfs/luet.yaml" ${LUET_REPOS}
 
   ${LUET_BIN} install  --config "$rootfs/luet.yaml" ${packages}
+
+  ${LUET_BIN} cleanup
   rm -rfv "$rootfs/luetdb"
   rm -rfv "$rootfs/luet.yaml"
   rm -rfv "$rootfs/luet/repos.conf.d"
