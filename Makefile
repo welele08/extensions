@@ -1,4 +1,4 @@
-BUNDLED_EXTENSIONS = autobump-github geniso genimage qa-artefacts
+BUNDLED_EXTENSIONS = autobump-github geniso genimage qa-artefacts migrate-entropy
 UBINDIR ?= /usr/bin
 DESTDIR ?=
 
