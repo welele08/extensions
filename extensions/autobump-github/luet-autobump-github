@@ -159,7 +159,7 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
 
                 if [ "${AUTO_GIT}" == "true" ]; then
                     git add $path/
-                    git commit -m "Revbump $PACKAGE_CATEGORY/$PACKAGE_NAME caused by $PACKAGE_CATEGORY/$PACKAGE_NAME"
+                    git commit -m "reverse dep: bump $i for $PACKAGE_CATEGORY/$PACKAGE_NAME"
                     git push -f -v origin $BRANCH_NAME
 
                     # Branch is ready now to open PR
