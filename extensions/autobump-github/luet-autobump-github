@@ -49,6 +49,7 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
     PACKAGE_NAME=$(echo "$PKG_LIST" | jq -r ".packages[] | select(.path==\"$i\").name")
     PACKAGE_CATEGORY=$(echo "$PKG_LIST" | jq -r ".packages[] | select(.path==\"$i\").category")
     PACKAGE_VERSION=$(echo "$PKG_LIST" | jq -r ".packages[] | select(.path==\"$i\").version")
+
     STRIPPED_PACKAGE_VERSION=${PACKAGE_VERSION%\+*}
     VERSION=$STRIPPED_PACKAGE_VERSION
 
@@ -65,6 +66,9 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
     # Strategy can be: release, tags or "refs"
     # Refs parses thru git tags
     AUTOBUMP_STRATEGY=$(yq r $PACKAGE_PATH/definition.yaml 'labels."autobump.strategy"')
+
+    # Package can opt-in for automatic revdeps revbump
+    AUTOBUMP_REVDEPS=$(yq r $PACKAGE_PATH/definition.yaml 'labels."autobump.revdeps"')
 
     # Prefix to trim from the version
     TRIM_PREFIX=$(yq r $PACKAGE_PATH/definition.yaml 'labels."autobump.trim_prefix"')
@@ -139,8 +143,31 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
             git checkout $START_GIT_BRANCH # Return to original branch
         fi
 
+        if [[ "$AUTOBUMP_REVDEPS" == "true" ]]; then
+            for i in $(luet tree pkglist -t $PWD -m $PACKAGE_CATEGORY/$PACKAGE_NAME --revdeps); do
+
+                if [ "${AUTO_GIT}" == "true" ]; then
+                    git checkout $BRANCH_NAME # Return to bump branch
+                fi
+
+                echo "Revbump for $i"
+                IFS=/ read -a package <<< $i
+                path=$(echo "$PKG_LIST" | jq -r ".packages[] | select(.name==\"${package[1]}\" and .category==\"${package[0]}\").path")
+
+                # Update runtime version
+                luet tree bump -f $path/definition.yaml
+
+                if [ "${AUTO_GIT}" == "true" ]; then
+                    git add $path/
+                    git commit -m "Revbump $PACKAGE_CATEGORY/$PACKAGE_NAME caused by $PACKAGE_CATEGORY/$PACKAGE_NAME"
+                    git push -f -v origin $BRANCH_NAME
+
+                    # Branch is ready now to open PR
+                    hub pull-request $HUB_ARGS -m "$(git log -1 --pretty=%B)"
+
+                    git checkout $START_GIT_BRANCH # Return to original branch
+                fi
+            done
+        fi
     fi
-
-    echo
-
 done
