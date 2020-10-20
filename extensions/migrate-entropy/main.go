@@ -20,7 +20,7 @@ func main() {
 
 	dbPath := os.Getenv("ENTROPY_DB")
 	if dbPath == "" {
-		dbPath = "/var/lib/entropy/client/database/amd64/sabayonlinux.org/standard/amd64/5/packages.db"
+		dbPath = "/var/lib/entropy/client/database/amd64/equo.db"
 	}
 
 	luet := os.Getenv("LUET")
