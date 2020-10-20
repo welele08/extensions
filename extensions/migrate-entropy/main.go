@@ -69,8 +69,13 @@ func main() {
 			category = fmt.Sprintf("%s-%s", category, pkg.Slot)
 		}
 
+		version := pkg.Version
+		if pkg.VersionSuffix != "" {
+			version += pkg.VersionSuffix
+		}
+
 		a := compiler.PackageArtifact{
-			CompileSpec: &compiler.LuetCompilationSpec{Package: &pack.DefaultPackage{Name: pkg.Name, Category: pkg.Category, Version: pkg.Version}},
+			CompileSpec: &compiler.LuetCompilationSpec{Package: &pack.DefaultPackage{Name: pkg.Name, Category: pkg.Category, Version: version}},
 			Files:       files,
 		}
 
