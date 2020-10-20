@@ -12,6 +12,7 @@ START_GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 HUB_ARGS="${HUB_ARGS:--b $START_GIT_BRANCH}"
 ROOT_DIR="${ROOT_DIR:-$PWD}"
 TREE_DIR="${TREE_DIR:-$ROOT_DIR/packages}"
+PKGAPI="${PKGAPI:-https://pkgapi.herokuapp.com}"
 
 # Fetch depedendencies if not available
 PATH=$PATH:$ROOT_DIR/.bin
@@ -36,6 +37,25 @@ hash hub 2>/dev/null || {
     mkdir $ROOT_DIR/.bin/;
     wget https://github.com/github/hub/releases/download/v${HUB_RELEASE}/hub-linux-amd64-${HUB_RELEASE}.tgz -O $ROOT_DIR/.bin/hub
     chmod +x $ROOT_DIR/.bin/hub
+}
+
+# Functions to retrieve latest package versions
+latest_sabayon() {
+    NAME=$1
+    CATEGORY=$2
+
+    echo $(curl -s -d "repo=${SABAYON_DATABASE}&category=${CATEGORY}&name=${NAME}&repository_type=sabayon" \
+            -X POST "${PKGAPI}/api/latest" \
+            | jq -r '.Packages[0].Version')
+}
+
+latest_gentoo() {
+    NAME=$1
+    CATEGORY=$2
+
+    echo $(curl -s -d "repo=gentoo&owner=gentoo&category=${CATEGORY}&name=${NAME}&repository_type=gentoo" \
+            -X POST "${PKGAPI}/api/latest" \
+            | jq -r '.Packages[0].Version')
 }
 
 # Luet tree package list
@@ -87,6 +107,22 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
 
     AUTOBUMP_REFIX=$(yq r $PACKAGE_PATH/definition.yaml 'labels."autobump.prefix"')
 
+
+    # Best effort: get original package name from labels
+    ORIGINAL_PACKAGE_NAME=$(yq r $PACKAGE_PATH/definition.yaml 'labels."original.package.name"')
+    ORIGINAL_PACKAGE_CATEGORY=$(yq r $PACKAGE_PATH/definition.yaml 'labels."original.package.category"')
+    ORIGINAL_PACKAGE_VERSION=$(yq r $PACKAGE_PATH/definition.yaml 'labels."original.package.version"')
+
+    if [ -z "$ORIGINAL_PACKAGE_NAME" ]; then
+        ORIGINAL_PACKAGE_NAME=$PACKAGE_NAME
+    fi
+    if [ -z "$ORIGINAL_PACKAGE_CATEGORY" ]; then
+        ORIGINAL_PACKAGE_CATEGORY=$PACKAGE_CATEGORY
+    fi
+    if [ -z "$ORIGINAL_PACKAGE_VERSION" ]; then
+        ORIGINAL_PACKAGE_VERSION=$STRIPPED_PACKAGE_VERSION
+    fi
+
     echo
     echo "# Checking updates for package $i"
     echo "- Github: $GITHUB_OWNER / $GITHUB_REPO"
@@ -107,10 +143,20 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
         LATEST_TAG=$(curl https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/git/refs/tags -s | jq '.[].ref | sub("refs\/tags\/"; "") | select(. | test("'$VERSION_CONTAINS'"))' -r | tail -n1 )
     elif [[ "$AUTOBUMP_STRATEGY" == "snapshot" ]]; then
         LATEST_TAG=${SNAPSHOT_PREFIX}$(date +%Y%m%d)
+    elif [ "${AUTOBUMP_STRATEGY}" == "gentoo" ]; then
+        LATEST_GENTOO_VERSION=$(latest_gentoo $ORIGINAL_PACKAGE_NAME $ORIGINAL_PACKAGE_CATEGORY)
+        if [ "$LATEST_GENTOO_VERSION" == "9999" ] || [ "$LATEST_GENTOO_VERSION" == "null" ]; then
+            LATEST_GENTOO_VERSION=
+        else
+            LATEST_TAG=$LATEST_GENTOO_VERSION
+        fi
+    elif [ "${AUTOBUMP_STRATEGY}" == "sabayon" ]; then
+        LATEST_TAG=$(latest_sabayon $ORIGINAL_PACKAGE_NAME $ORIGINAL_PACKAGE_CATEGORY)
     else
         LATEST_TAG=$(curl https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/tags -s | jq -r '.[].name | select(. | test("'$VERSION_CONTAINS'"))' -r | head -1 )
     fi
 
+    ORIGINAL_NEW_TAG=${LATEST_TAG}
     LATEST_TAG=${LATEST_TAG#v} # semver
     LATEST_TAG=${LATEST_TAG#$TRIM_PREFIX} # go..
 
@@ -146,6 +192,12 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
 
         # Update runtime version
         yq w -i $PACKAGE_PATH/definition.yaml version "$LATEST_TAG" --style double
+
+        if [ "${AUTOBUMP_STRATEGY}" == "gentoo" ] || [ "${AUTOBUMP_STRATEGY}" == "sabayon" ]; then
+            yq w -i $PACKAGE_PATH/definition.yaml 'labels."original.package.version"' "$ORIGINAL_NEW_TAG" --style double
+            yq w -i $PACKAGE_PATH/definition.yaml 'labels."original.package.name"' "$ORIGINAL_PACKAGE_NAME" --style double
+            yq w -i $PACKAGE_PATH/definition.yaml 'labels."original.package.category"' "$ORIGINAL_PACKAGE_CATEGORY" --style double
+        fi
 
         if [ "${AUTO_GIT}" == "true" ]; then
             git add $PACKAGE_PATH/
