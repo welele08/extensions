@@ -63,6 +63,12 @@ func main() {
 			files = append(files, strings.TrimPrefix(f, "/"))
 		}
 
+		// We use category with slot when slot != 0
+		category := pkg.Category
+		if pkg.Slot != "0" {
+			category = fmt.Sprintf("%s-%s", category, pkg.Slot)
+		}
+
 		a := compiler.PackageArtifact{
 			CompileSpec: &compiler.LuetCompilationSpec{Package: &pack.DefaultPackage{Name: pkg.Name, Category: pkg.Category, Version: pkg.Version}},
 			Files:       files,
