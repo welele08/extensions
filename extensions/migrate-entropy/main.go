@@ -32,7 +32,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer os.RemoveAll(dir)
+	if os.Getenv("DEBUG") != "true" {
+		defer os.RemoveAll(dir)
+	}
 
 	// Retrive list of installed packages (return []EntropyPackage)
 	pkgs, err := entropy.RetrieveRepoPackages(dbPath)
@@ -89,19 +91,21 @@ func main() {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-
-		err = ioutil.WriteFile(filepath.Join(dir, a.GetCompileSpec().GetPackage().GetFingerPrint()+".metadata.yaml"), data, os.ModePerm)
+		metadata := filepath.Join(dir, a.GetCompileSpec().GetPackage().GetFingerPrint()+".metadata.yaml")
+		fmt.Println("[", index, "/", len(pkgs), "]", "Generating metadata for", pkg,"at",metadata)
+		err = ioutil.WriteFile(metadata, data, os.ModePerm)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
 		fmt.Println("[", index, "/", len(pkgs), "]", "Creating db entry for ", pkg)
 
-		cmd := exec.Command(luet, "database", "create", filepath.Join(dir, a.GetCompileSpec().GetPackage().GetFingerPrint()+".metadata.yaml"))
+		cmd := exec.Command(luet, "database", "create", metadata)
 		cmd.Env = os.Environ()
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			fmt.Println("Failed creating package", pkg, err.Error())
+			fmt.Println(out)
 			os.Exit(1)
 		}
 		fmt.Println("[", index, "/", len(pkgs), "]", string(out))
