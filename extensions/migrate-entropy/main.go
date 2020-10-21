@@ -66,7 +66,12 @@ func main() {
 		// We use category with slot when slot != 0
 		category := pkg.Category
 		if pkg.Slot != "0" {
-			category = fmt.Sprintf("%s-%s", category, pkg.Slot)
+			slot := pkg.Slot
+			// Ignore sub-slot
+			if strings.Contains(pkg.Slot, ".") {
+				slot := pkg.Slot[0:strings.Index(slot, ".")]
+			}
+			category = fmt.Sprintf("%s-%s", category, slot)
 		}
 
 		version := pkg.Version
