@@ -71,7 +71,7 @@ func main() {
 			slot := pkg.Slot
 			// Ignore sub-slot
 			if strings.Contains(pkg.Slot, ".") {
-				slot := pkg.Slot[0:strings.Index(slot, ".")]
+				slot = pkg.Slot[0:strings.Index(slot, ".")]
 			}
 			category = fmt.Sprintf("%s-%s", category, slot)
 		}
@@ -92,7 +92,7 @@ func main() {
 			os.Exit(1)
 		}
 		metadata := filepath.Join(dir, a.GetCompileSpec().GetPackage().GetFingerPrint()+".metadata.yaml")
-		fmt.Println("[", index, "/", len(pkgs), "]", "Generating metadata for", pkg,"at",metadata)
+		fmt.Println("[", index, "/", len(pkgs), "]", "Generating metadata for", pkg, "at", metadata)
 		err = ioutil.WriteFile(metadata, data, os.ModePerm)
 		if err != nil {
 			fmt.Println(err)
