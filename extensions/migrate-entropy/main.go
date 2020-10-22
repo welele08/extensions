@@ -75,8 +75,8 @@ func main() {
 		if pkg.Slot != "0" {
 			slot := pkg.Slot
 			// Ignore sub-slot
-			if strings.Contains(pkg.Slot, ".") {
-				slot = pkg.Slot[0:strings.Index(slot, ".")]
+			if strings.Contains(pkg.Slot, "/") {
+				slot = pkg.Slot[0:strings.Index(slot, "/")]
 			}
 			category = fmt.Sprintf("%s-%s", category, slot)
 		}
