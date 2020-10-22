@@ -44,11 +44,13 @@ func main() {
 	}
 
 	fmt.Println("Found", len(pkgs), "packages")
-	fmt.Println(pkgs)
+	if os.Getenv("DEBUG") == "true" {
+		fmt.Println(pkgs)
+	}
 
-	index := 1
-	for _, pkg := range pkgs {
-		fmt.Println(fmt.Sprintf("[ %3d / %3d ] Retreiving data for %s",
+	for idx, pkg := range pkgs {
+		index := idx + 1
+		fmt.Println(fmt.Sprintf("[ %3d / %3d ] Retrieving data for %s",
 			index, len(pkgs), pkg))
 
 		// Retrieve pkg detail (EntropyPackageDetail)
@@ -85,7 +87,7 @@ func main() {
 		}
 
 		a := compiler.PackageArtifact{
-			CompileSpec: &compiler.LuetCompilationSpec{Package: &pack.DefaultPackage{Name: pkg.Name, Category: pkg.Category, Version: version}},
+			CompileSpec: &compiler.LuetCompilationSpec{Package: &pack.DefaultPackage{Name: pkg.Name, Category: category, Version: version}},
 			Files:       files,
 		}
 
@@ -95,8 +97,8 @@ func main() {
 			os.Exit(1)
 		}
 		metadata := filepath.Join(dir, a.GetCompileSpec().GetPackage().GetFingerPrint()+".metadata.yaml")
-		fmt.Println(fmt.Sprintf("[ %3d / %3d ] Generating metadata for %s:%s at %s",
-			index, len(pkgs), pkg, pkg.Slot, metadata))
+		fmt.Println(fmt.Sprintf("[ %3d / %3d ] Generating metadata for %s:%s (%d) at %s",
+			index, len(pkgs), pkg, pkg.Slot, len(files), metadata))
 		err = ioutil.WriteFile(metadata, data, os.ModePerm)
 		if err != nil {
 			fmt.Println(err)
