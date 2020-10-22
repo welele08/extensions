@@ -48,8 +48,9 @@ func main() {
 
 	index := 1
 	for _, pkg := range pkgs {
+		fmt.Println(fmt.Sprintf("[ %3d / %3d ] Retreiving data for %s",
+			index, len(pkgs), pkg))
 
-		fmt.Println("[", index, "/", len(pkgs), "]", "Retreiving data for ", pkg)
 		// Retrieve pkg detail (EntropyPackageDetail)
 		detail, err := entropy.RetrievePackageData(pkg, dbPath)
 		if err != nil {
@@ -57,7 +58,9 @@ func main() {
 			os.Exit(1)
 		}
 		// print list of files
-		fmt.Println("[", index, "/", len(pkgs), "]", "files: ", detail.Files)
+		if os.Getenv("DEBUG") == "true" {
+			fmt.Println("[", index, "/", len(pkgs), "]", "files: ", detail.Files)
+		}
 
 		var files []string
 
@@ -92,13 +95,15 @@ func main() {
 			os.Exit(1)
 		}
 		metadata := filepath.Join(dir, a.GetCompileSpec().GetPackage().GetFingerPrint()+".metadata.yaml")
-		fmt.Println("[", index, "/", len(pkgs), "]", "Generating metadata for", pkg, "at", metadata)
+		fmt.Println(fmt.Sprintf("[ %3d / %3d ] Generating metadata for %s:%s at %s",
+			index, len(pkgs), pkg, pkg.Slot, metadata))
 		err = ioutil.WriteFile(metadata, data, os.ModePerm)
 		if err != nil {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-		fmt.Println("[", index, "/", len(pkgs), "]", "Creating db entry for ", pkg)
+		fmt.Println(fmt.Sprintf("[ %3d / %3d ] Creating db entry for %s",
+			index, len(pkgs), pkg))
 
 		cmd := exec.Command(luet, "database", "create", metadata)
 		cmd.Env = os.Environ()
@@ -108,6 +113,8 @@ func main() {
 			fmt.Println(out)
 			os.Exit(1)
 		}
-		fmt.Println("[", index, "/", len(pkgs), "]", string(out))
+
+		fmt.Println(fmt.Sprintf("[ %3d / %3d ] %s",
+			index, len(pkgs), string(out)))
 	}
 }
