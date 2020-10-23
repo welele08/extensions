@@ -145,7 +145,7 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
         LATEST_TAG=$(curl https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest -s | jq .tag_name -r)
     elif [[ "$AUTOBUMP_STRATEGY" == "refs" ]]; then
         LATEST_TAG=$(curl https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/git/refs/tags -s | jq '.[].ref | sub("refs\/tags\/"; "") | select(. | test("'$VERSION_CONTAINS'"))' -r | tail -n1 )
-    elif [[ "$AUTOBUMP_STRATEGY" == "snapshot" ]]; then
+    elif [[ "$AUTOBUMP_STRATEGY" == "snapshot" ]] || [[ "$AUTOBUMP_STRATEGY" == "git_hash" ]]; then
         LATEST_TAG=${SNAPSHOT_PREFIX}$(date +%Y%m%d)
     elif [ "${AUTOBUMP_STRATEGY}" == "gentoo" ]; then
         LATEST_GENTOO_VERSION=$(latest_gentoo $ORIGINAL_PACKAGE_NAME $ORIGINAL_PACKAGE_CATEGORY)
@@ -201,6 +201,13 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
             yq w -i $DEFINITION_FILE 'labels."original.package.version"' "$ORIGINAL_NEW_TAG" --style double
             yq w -i $DEFINITION_FILE 'labels."original.package.name"' "$ORIGINAL_PACKAGE_NAME" --style double
             yq w -i $DEFINITION_FILE 'labels."original.package.category"' "$ORIGINAL_PACKAGE_CATEGORY" --style double
+        fi
+
+        if [[ "$AUTOBUMP_STRATEGY" == "git_hash" ]]; then
+            GIT_BRANCH=$(yq r $DEFINITION_FILE 'labels."autobump.git.branch"')
+            GIT_BRANCH="${GIT_BRANCH:-master}"
+            SHA=$(curl https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/git/refs/heads/$GIT_BRANCH -s | jq -r '.object.sha')
+            yq w -i $DEFINITION_FILE 'labels."git.hash"' "$SHA" --style double
         fi
 
         if [ "${AUTO_GIT}" == "true" ]; then
