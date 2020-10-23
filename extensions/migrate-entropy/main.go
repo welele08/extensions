@@ -48,6 +48,8 @@ func main() {
 		fmt.Println(pkgs)
 	}
 
+	brokenPkg := []string{}
+
 	for idx, pkg := range pkgs {
 		index := idx + 1
 		fmt.Println(fmt.Sprintf("[ %3d / %3d ] Retrieving data for %s",
@@ -57,7 +59,8 @@ func main() {
 		detail, err := entropy.RetrievePackageData(pkg, dbPath)
 		if err != nil {
 			fmt.Println(err)
-			os.Exit(1)
+			brokenPkg = append(brokenPkg, pkg.String())
+			continue
 		}
 		// print list of files
 		if os.Getenv("DEBUG") == "true" {
@@ -113,10 +116,19 @@ func main() {
 		if err != nil {
 			fmt.Println("Failed creating package", pkg, err.Error())
 			fmt.Println(out)
-			os.Exit(1)
+			brokenPkg = append(brokenPkg, pkg.String())
+			continue
 		}
 
 		fmt.Println(fmt.Sprintf("[ %3d / %3d ] %s",
 			index, len(pkgs), string(out)))
 	}
+
+	if len(brokenPkg) > 0 {
+		fmt.Println(fmt.Sprintf("%d Packages not imported:", len(brokenPkg)))
+		for _, pkg := range brokenPkg {
+			fmt.Println(pkg)
+		}
+	}
+	fmt.Println("All done.")
 }
