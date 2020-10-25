@@ -5,7 +5,7 @@ DESTDIR ?=
 all: build install
 
 build:
-	CGO_ENABLE=0 go build -o luet-migrate-entropy
+	CGO_ENABLED=0 go build -o luet-migrate-entropy
 
 install: build
 	install -d $(DESTDIR)/$(UBINDIR)
