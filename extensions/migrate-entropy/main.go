@@ -16,6 +16,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+// #cgo LDFLAGS: -lpthread
+
 func main() {
 
 	dbPath := os.Getenv("ENTROPY_DB")
@@ -59,7 +61,7 @@ func main() {
 		detail, err := entropy.RetrievePackageData(pkg, dbPath)
 		if err != nil {
 			fmt.Println(err)
-			brokenPkg = append(brokenPkg, pkg.String())
+			brokenPkg = append(brokenPkg, fmt.Sprintf("%s: %s", pkg.String(), err.Error()))
 			continue
 		}
 		// print list of files
@@ -115,8 +117,8 @@ func main() {
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			fmt.Println("Failed creating package", pkg, err.Error())
-			fmt.Println(out)
-			brokenPkg = append(brokenPkg, pkg.String())
+			fmt.Println(string(out))
+			brokenPkg = append(brokenPkg, fmt.Sprintf("%s: %s - %s", pkg.String(), string(out), err.Error()))
 			continue
 		}
 
@@ -129,6 +131,7 @@ func main() {
 		for _, pkg := range brokenPkg {
 			fmt.Println(pkg)
 		}
+		fmt.Println("Some packages are not loaded correctly. Please, share your experience to the community")
 	}
 	fmt.Println("All done.")
 }
