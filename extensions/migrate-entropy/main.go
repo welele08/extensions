@@ -77,7 +77,12 @@ func main() {
 
 		// We use category with slot when slot != 0
 		category := pkg.Category
-		if pkg.Slot != "0" {
+
+		if pkg.KernelModuleSuffix != "" {
+			// The package is related to a kernel module
+			category = fmt.Sprintf("%s-%s", category,
+				strings.ReplaceAll(pkg.KernelModuleSuffix, ".0-sabayon", ""))
+		} else if pkg.Slot != "0" {
 			slot := pkg.Slot
 			// Ignore sub-slot
 			if strings.Contains(pkg.Slot, "/") {
