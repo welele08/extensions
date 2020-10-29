@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/MottainaiCI/simplestreams-builder v0.1.0 // indirect
-	github.com/Sabayon/pkgs-checker v0.7.2
+	github.com/Sabayon/pkgs-checker v0.7.3-0.20201029211214-b71c01e603ee
 	github.com/go-yaml/yaml v2.1.0+incompatible // indirect
 	github.com/hashicorp/go-version v1.2.1 // indirect
 	github.com/mattn/go-sqlite3 v1.14.4 // indirect
