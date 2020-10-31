@@ -1,0 +1,214 @@
+#!/bin/bash
+# Author: Daniele Rondina, geaaru@sabayonlinux.org
+# Unpack portage packages to a specific directory
+# License: MIT
+
+[ $DEBUG ] && set -x
+
+QUIET="${QUIET:-0}"
+LUET_PORTAGE_PKGS=${LUET_PORTAGE_PKGS:-}
+LUET_PORTAGE_TARGETDIR=${LUET_PORTAGE_TARGETDIR:-/portage}
+LUET_PORTAGE_PKGFILES=${LUET_PORTAGE_PKGFILES:-1}
+LUET_PORTAGE_PKGMETA=${LUET_PORTAGE_PKGMETA:-0}
+LUET_PORTAGE_TMPDIR=${LUET_PORTAGE_TMPDIR:-/luet-extract}
+LUET_PORTAGE_CACHE_PACKAGES=${LUET_PORTAGE_CACHE_PACKAGES:-/var/cache/portage/packages}
+
+summary () {
+  echo "luet-portage params:
+
+LUET_PORTAGE_PKGS:      ${LUET_PORTAGE_PKGS}
+LUET_PORTAGE_TARGETDIR: ${LUET_PORTAGE_TARGETDIR}
+LUET_PORTAGE_PKGMETA:   ${LUET_PORTAGE_PKGMETA}
+LUET_PORTAGE_PKGFILES:  ${LUET_PORTAGE_PKGFILES}
+"
+  return 0
+}
+
+create_package () {
+  local pkg=$1
+
+  [ "$QUIET" = "0" ] || echo "[$1] quickpkg phase"
+
+  if [ "${pkg:0:1}" != "=" ] ; then
+    pkg="=${pkg}"
+  fi
+
+  quickpkg $pkg || return 1
+
+  return 0
+}
+
+extract_pkg_files () {
+  local pkg=$1
+  local cat=$(pkgs-checker pkg info ${pkg} --json | jq '.category' -r)
+  local name=$(pkgs-checker pkg info ${pkg} --json | jq '.name' -r)
+  local version=$(pkgs-checker pkg info ${pkg} --json | jq '.version' -r)
+  local vsuffix=$(pkgs-checker pkg info ${pkg} --json | jq '.version_suffix' -r)
+
+  if [ "${version}" = "null" ] ; then
+    echo "[$1] package without version!"
+    return 1
+  fi
+
+  if [ "${vsuffix}" = "null" ] ; then
+    vsuffix=""
+  fi
+
+  mkdir -p ${LUET_PORTAGE_TMPDIR} || true
+  qtbz2 -d ${LUET_PORTAGE_TMPDIR} ${LUET_PORTAGE_CACHE_PACKAGES}/${cat}/${name}-${version}${version_suffix}.tbz2 || return 1
+
+  ls -l ${LUET_PORTAGE_TMPDIR}
+
+  tar xvjf ${LUET_PORTAGE_TMPDIR}/${name}-${version}${version_suffix}.tar.bz2 \
+    -C ${LUET_PORTAGE_TARGETDIR} || return 1
+
+  return 0
+}
+
+extract_portage_files () {
+  local pkg=$1
+  local do_qtbz2=${2:-0}
+  local cat=$(pkgs-checker pkg info ${pkg} --json | jq '.category' -r)
+  local name=$(pkgs-checker pkg info ${pkg} --json | jq '.name' -r)
+  local version=$(pkgs-checker pkg info ${pkg} --json | jq '.version' -r)
+  local vsuffix=$(pkgs-checker pkg info ${pkg} --json | jq '.version_suffix' -r)
+
+  if [ "${vsuffix}" = "null" ] ; then
+    vsuffix=""
+  fi
+
+  mkdir -p ${LUET_PORTAGE_TMPDIR} || true
+
+  if [ "$do_qtbz2" = "1" ] ; then
+    qtbz2 -d ${LUET_PORTAGE_TMPDIR} ${LUET_PORTAGE_CACHE_PACKAGES}/${cat}/${name}-${version}${version_suffix}.tbz2 || return 1
+
+    ls -l ${LUET_PORTAGE_TMPDIR}
+  fi
+
+  mkdir -p ${LUET_PORTAGE_TARGETDIR}/var/db/pkg/${cat}/${name}-${version}${version_suffix}/
+  qxpak -x -d ${LUET_PORTAGE_TARGETDIR}/var/db/pkg/${cat}/${name}-${version}${version_suffix}/ \
+    ${LUET_PORTAGE_TMPDIR}/${name}-${version}${version_suffix}.xpak
+
+  return 0
+}
+
+
+extract () {
+  local do_qtbz2=1
+  # TODO: run this task in parallel
+
+  for p in ${LUET_PORTAGE_PKGS} ; do
+    do_qtbz2=1
+
+    echo "[${p}] Extracting ...."
+    create_package "${p}" || return 1
+
+    if [ ${LUET_PORTAGE_PKGFILES} = "1" ] ; then
+      extract_pkg_files ${p} || return 1
+      do_qtbz2=0
+    fi
+
+    if [ ${LUET_PORTAGE_PKGMETA} = "1" ] ; then
+      extract_portage_files "${p}" "${do_qtbz2}" || return 1
+    fi
+  done
+
+  return 0
+}
+
+main () {
+
+  parse_args () {
+
+    _help () {
+      echo "Copyright (c) 2020 Luet Extensions
+
+luet portage [opts]
+
+Tools for Gentoo/Funtoo packages.
+
+  * extract package portage files
+  * extract package files
+
+Example:
+
+  $> luet portage -- --dir <target_dir> --extract-meta --extract-files <pkg1> <pkg2>
+
+Available options:
+
+--help|-h                             Show this help message.
+--dir <DIR>                           Path where extract files. Default \"${LUET_PORTAGE_TARGETDIR}\".
+--extract-meta|-m                     Extract portage metadata. Default \"${LUET_PORTAGE_PKGMETA}\".
+--extract-files|-f                    Extract packages files. Default \"${LUET_PORTAGE_PKGFILES}\".
+--quiet                               Quiet output.
+"
+      return 0
+    }
+
+    if [ $# -eq 0 ] ; then
+      _help
+      exit 1
+    fi
+
+    local short_opts="hmf"
+    local long_opts="help dir extract-meta extract-files quiet"
+    $(set -- $(getopt -u -q -a -o "${short_opts}" -l "${long_opts}" -- "$@"))
+
+    while [ $# -gt 0 ] ; do
+
+      case "$1" in
+        -h|--help)
+          _help
+          exit 1
+          ;;
+        --dir)
+          LUET_PORTAGE_TARGETDIR=$2
+          shift
+          ;;
+        -f|--extract-files)
+          LUET_PORTAGE_PKGFILES=1
+          ;;
+        -m|--extract-meta)
+          LUET_PORTAGE_PKGMETA=1
+          ;;
+        --quiet)
+          QUIET=1
+          ;;
+        --)
+          ;;
+        *)
+          LUET_PORTAGE_PKGS="${LUET_PORTAGE_PKGS} $1"
+          ;;
+      esac
+
+      shift
+    done
+
+    if [ -z "${LUET_PORTAGE_TARGETDIR}" ] ; then
+      echo "ERROR: Missing target dir"
+      exit 1
+    fi
+
+    if [ -z "${LUET_PORTAGE_PKGS}" ] ; then
+      echo "ERROR: No packages to extract"
+      exit 1
+    fi
+
+    return 0
+  }
+
+  parse_args "$@"
+
+  unset -f parse_args
+
+  if [ "${QUIET}" == "0" ] ; then
+    summary
+  fi
+
+  extract || return 1
+
+  return 0
+}
+
+main "$@"
+exit $?
