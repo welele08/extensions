@@ -1,0 +1,62 @@
+
+<html>
+<head>
+ <link href="https://fonts.googleapis.com/css2?family=Alata&display=swap" rel="stylesheet"> 
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.1/css/bulma.css" />
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" integrity="sha512-+4zCK9k+qNFUR5X+cKL9EIR+ZOhtIloNl9GIKS57V1MyNsYpYcUrUeQc9vNfzsWfV28IaLL3i96P9sdNyeRssA==" crossorigin="anonymous" />
+<style>
+body {
+ font-family: 'Alata', sans-serif;
+}
+</style>
+</head>
+
+
+<body>
+<section class="hero">
+  <div class="hero-body">
+    <div class="container">
+        
+      <h1 class="title">
+        <a href="/"><span class="icon has-text-primary is-medium 	"> <i class="fas fa-home"></i></span> </a> Matches for {{.PackageCategory}}/{{.PackageName}}
+      </h1>
+      <h2 class="subtitle">
+        Found {{ len .Packages }} package(s)
+      </h2>
+    </div>
+  </div>
+</section>
+
+<div class="container">
+ <table class="table container is-hoverable is-fullwidth is-striped ">
+  <thead>
+    <tr>
+      <th><abbr title="Name">Name</abbr></th>
+      <th>Category</th>
+      <th><abbr title="Version">Version</abbr></th>
+    </tr>
+  </thead>
+  <tfoot>
+    <tr>
+      <th><abbr title="Name">Name</abbr></th>
+      <th>Category</th>
+      <th><abbr title="Version">Version</abbr></th>
+    </tr>
+  </tfoot>
+  <tbody>
+{{ range $repo, $packs := .Packages }}
+{{ range $_, $pack := $packs }}
+    <tr>
+      <td><a href="/{{$repo}}/{{$pack.Category}}/{{$pack.Name}}/{{$pack.Version}}"> {{$pack.Name}}</a></td>
+      <td>{{$pack.Category}}</td>
+      <td><a href="/{{$repo}}/{{$pack.Category}}/{{$pack.Name}}/{{$pack.Version}}">{{$pack.Version}}</a></td>
+      </tr>
+   {{end}}
+  {{end}}
+  </tbody>
+ </table>
+</div>
+
+</body>
+
+</html>

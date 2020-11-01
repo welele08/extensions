@@ -1,0 +1,157 @@
+{{ $reponame := .RepositoryName }}
+
+<html>
+<head>
+ <link href="https://fonts.googleapis.com/css2?family=Alata&display=swap" rel="stylesheet"> 
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.1/css/bulma.css" />
+ <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css" integrity="sha512-+4zCK9k+qNFUR5X+cKL9EIR+ZOhtIloNl9GIKS57V1MyNsYpYcUrUeQc9vNfzsWfV28IaLL3i96P9sdNyeRssA==" crossorigin="anonymous" />
+<style>
+body {
+ font-family: 'Alata', sans-serif;
+}
+</style>
+</head>
+
+
+<body>
+<section class="hero">
+  <div class="hero-body">
+    <div class="container">
+        
+      <h1 class="title">
+        <a href="/"><span class="icon has-text-primary is-medium 	"> <i class="fas fa-home"></i></span> </a> {{.Package.Category}}/{{.Package.Name}}-{{.Package.Version}}
+      </h1>
+      <h2 class="subtitle">
+        {{.Package.Description}}
+      </h2>
+    </div>
+  </div>
+</section>
+
+
+<div class="container">
+
+<div class="box">
+
+<nav class="panel">
+  <p class="panel-heading">
+  <span class="icon has-text-primary is-medium"> <i class="fas fa-box-open"></i></span> Overview of {{.Package.Category}}/{{.Package.Name}}
+  </p>
+
+
+<div class="p-3 m-3 container">
+
+
+
+<span class="icon has-text-primary is-medium"> <i class="fas fa-briefcase"></i></span> Version:  <strong> {{.Package.Version}}  </strong> <br>
+
+<span class="icon has-text-primary is-medium"> <i class="fas fa-gavel"></i></span> License: <strong> {{.Package.License}} </strong> <br>
+<span class="icon has-text-primary is-medium"> <i class="fas fa-clock"></i></span> Build date: <strong> {{.Package.BuildTimestamp}} </strong> <br>
+
+
+
+
+{{ if ne (len .Package.PackageRequires) 0 }}
+<h1> Requires </h1>
+{{range $_, $f  := .Package.PackageRequires}}
+<span class="tag">
+ <a href="/find/{{$f.Category}}/{{$f.Name}}">  <span class="icon has-text-dark is-medium"> <i class="fas fa-box-open"></i></span>  {{$f.Name}} {{$f.Version}} </a>
+ </a>
+</span>
+{{end}}
+{{end}}
+
+{{ if ne (len .Package.PackageConflicts) 0 }}
+<h1> Conflicts </h1>
+{{range $_, $f  := .Package.PackageConflicts}}
+<span class="tag">
+ <a href="/find/{{$f.Category}}/{{$f.Name}}">  <span class="icon has-text-dark is-medium"> <i class="fas fa-box-open"></i></span>  {{$f.Name}} {{$f.Version}} </a>
+ </a>
+{{end}}
+{{end}}
+
+
+
+
+{{ if ne (len .Package.Labels) 0 }}
+<h1> Labels </h1>
+{{range $key, $fa := .Package.Labels}}
+<span class="tag">
+<span class="icon has-text-dark is-medium"> <i class="fas fa-tag"></i></span> {{$key}}: {{$fa}}
+</span>
+{{end}}
+{{end}}
+
+
+{{ if ne (len .Package.Annotations) 0 }}
+<h1> Annotations </h1>
+{{range $key, $fa := .Package.Annotations}}
+<span class="tag">
+<span class="icon has-text-dark is-medium"> <i class="fas fa-tag"></i></span> {{$key}}: {{$fa}}
+</span>
+{{end}}
+{{end}}
+
+
+{{ if ne (len .Package.Uri) 0 }}
+<h1> Links </h1>
+{{range $_, $f  := .Package.Uri}}
+
+<span class="tag">
+ <a href="{{$f}}" target="_blank"> <span class="icon has-text-dark is-medium"> <i class="fas fa-link"></i></span> {{$f}} </a>
+</span>
+{{end}}
+{{end}}
+
+{{ if ne (len .Package.Provides) 0 }}
+<h1> Provides </h1>
+{{range $_, $f  := .Package.Provides}}
+<span class="tag">
+ <a href="/{{$reponame}}/{{$f.Category}}/{{$f.Name}}">  <span class="icon has-text-dark is-medium"> <i class="fas fa-box-open"></i></span>  {{$f.Name}} {{$f.Version}} </a>
+ </a>
+{{end}}
+{{ end }}
+
+{{if .Package.Hidden}}
+Package is hidden
+{{end}}
+
+
+
+
+</div>
+
+</nav>
+
+
+
+
+{{ if ne (len .Files) 0 }}
+<br>
+<nav class="panel">
+  <p class="panel-heading">
+    Files
+  </p>
+  {{range $_, $f  := .Files}}
+  <a class="panel-block">
+    <span class="panel-icon">
+      <i class="fas fa-book" aria-hidden="true"></i>
+    </span>
+    {{$f}}
+  </a>
+  {{end}}
+</nav>
+{{end}}
+
+
+
+
+</div>
+
+
+</div>
+
+
+</body>
+
+</html>
