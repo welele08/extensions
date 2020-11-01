@@ -5,7 +5,7 @@
 
 [ $DEBUG ] && set -x
 
-QUIET="${QUIET:-0}"
+QUIET="${QUIET:-1}"
 LUET_PORTAGE_PKGS=${LUET_PORTAGE_PKGS:-}
 LUET_PORTAGE_TARGETDIR=${LUET_PORTAGE_TARGETDIR:-/portage}
 LUET_PORTAGE_PKGFILES=${LUET_PORTAGE_PKGFILES:-1}
@@ -40,6 +40,9 @@ create_package () {
 
 extract_pkg_files () {
   local pkg=$1
+
+  [ "$QUIET" = "0" ] || echo "[${pkg}] Extract package files..."
+
   local cat=$(pkgs-checker pkg info ${pkg} --json | jq '.category' -r)
   local name=$(pkgs-checker pkg info ${pkg} --json | jq '.name' -r)
   local version=$(pkgs-checker pkg info ${pkg} --json | jq '.version' -r)
@@ -55,11 +58,11 @@ extract_pkg_files () {
   fi
 
   mkdir -p ${LUET_PORTAGE_TMPDIR} || true
-  qtbz2 -d ${LUET_PORTAGE_TMPDIR} ${LUET_PORTAGE_CACHE_PACKAGES}/${cat}/${name}-${version}${version_suffix}.tbz2 || return 1
+  qtbz2 -d ${LUET_PORTAGE_TMPDIR} ${LUET_PORTAGE_CACHE_PACKAGES}/${cat}/${name}-${version}${vsuffix}.tbz2 || return 1
 
   ls -l ${LUET_PORTAGE_TMPDIR}
 
-  tar xvjf ${LUET_PORTAGE_TMPDIR}/${name}-${version}${version_suffix}.tar.bz2 \
+  tar xvjf ${LUET_PORTAGE_TMPDIR}/${name}-${version}${vsuffix}.tar.bz2 \
     -C ${LUET_PORTAGE_TARGETDIR} || return 1
 
   return 0
@@ -68,6 +71,9 @@ extract_pkg_files () {
 extract_portage_files () {
   local pkg=$1
   local do_qtbz2=${2:-0}
+
+  [ "$QUIET" = "0" ] || echo "[${pkg}] Extract portage files..."
+
   local cat=$(pkgs-checker pkg info ${pkg} --json | jq '.category' -r)
   local name=$(pkgs-checker pkg info ${pkg} --json | jq '.name' -r)
   local version=$(pkgs-checker pkg info ${pkg} --json | jq '.version' -r)
@@ -80,18 +86,70 @@ extract_portage_files () {
   mkdir -p ${LUET_PORTAGE_TMPDIR} || true
 
   if [ "$do_qtbz2" = "1" ] ; then
-    qtbz2 -d ${LUET_PORTAGE_TMPDIR} ${LUET_PORTAGE_CACHE_PACKAGES}/${cat}/${name}-${version}${version_suffix}.tbz2 || return 1
+    qtbz2 -d ${LUET_PORTAGE_TMPDIR} ${LUET_PORTAGE_CACHE_PACKAGES}/${cat}/${name}-${version}${vsuffix}.tbz2 || return 1
 
     ls -l ${LUET_PORTAGE_TMPDIR}
   fi
 
-  mkdir -p ${LUET_PORTAGE_TARGETDIR}/var/db/pkg/${cat}/${name}-${version}${version_suffix}/
-  qxpak -x -d ${LUET_PORTAGE_TARGETDIR}/var/db/pkg/${cat}/${name}-${version}${version_suffix}/ \
-    ${LUET_PORTAGE_TMPDIR}/${name}-${version}${version_suffix}.xpak
+  mkdir -p ${LUET_PORTAGE_TARGETDIR}/var/db/pkg/${cat}/${name}-${version}${vsuffix}/
+  qxpak -x -d ${LUET_PORTAGE_TARGETDIR}/var/db/pkg/${cat}/${name}-${version}${vsuffix}/ \
+    ${LUET_PORTAGE_TMPDIR}/${name}-${version}${vsuffix}.xpak
 
   return 0
 }
 
+get_pkg_version () {
+  local -n pv="$1"
+
+  if [ -z "$pv" ] ; then
+    echo "get_pkg_version: Invalid package"
+    return 1
+  fi
+
+  local cat=$(pkgs-checker pkg info ${pv} --json | jq '.category' -r)
+  local name=$(pkgs-checker pkg info ${pv} --json | jq '.name' -r)
+  local slot=$(pkgs-checker pkg info ${pv} --json | jq '.slot' -r)
+
+  if [ "${slot}" == "null" ] ; then
+    slot="0"
+  fi
+
+  local npkgs=$(qlist -ICvS ${cat}/${name} | wc -l)
+  if [ $npkgs -eq 0 ] ; then
+    echo "No installed package found with name ${pv}!"
+    return 1
+  fi
+
+  if [ $npkgs -gt 1 ] ; then
+
+    # Ensure that i get the right package with right slot.
+    npkgs=$(qlist -ICvS ${cat}/${name}:${slot} | wc -l)
+    if [ $npkgs -eq 0 ] ; then
+      echo "No installed package found with name ${pv} and slot ${slot}!"
+      return 1
+    fi
+
+    pv=$(qlist -ICvS ${cat}/${name}:${slot})
+
+  else
+
+    if [ "$slot" != "0" ] ; then
+      # Ensure that i get the right package with right slot.
+      npkgs=$(qlist -I -C -v -S ${cat}/${name}:${slot} | wc -l)
+      if [ $npkgs -eq 0 ] ; then
+        echo "No installed package found with name ${pv} and slot ${slot}!"
+        return 1
+      fi
+    fi
+
+    pv=$(qlist -ICvS ${cat}/${name})
+
+  fi
+
+  [ "$QUIET" = "0" ] || echo "Using version ${pv}"
+
+  return 0
+}
 
 extract () {
   local do_qtbz2=1
@@ -99,6 +157,16 @@ extract () {
 
   for p in ${LUET_PORTAGE_PKGS} ; do
     do_qtbz2=1
+
+    local version=$(pkgs-checker pkg info ${p} --json | jq '.version' -r)
+
+    if [[ "$version" = "null" || "$version" = "" ]] ; then
+      local version_suffix=""
+
+      # Trying to retrieve installed version
+      get_pkg_version p || return 1
+
+    fi
 
     echo "[${p}] Extracting ...."
     create_package "${p}" || return 1
