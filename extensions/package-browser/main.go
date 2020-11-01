@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
+	"net/http"
 	"os"
 	"sort"
 	"strconv"
@@ -14,8 +16,8 @@ import (
 	"github.com/mudler/luet/pkg/installer"
 	. "github.com/mudler/luet/pkg/logger"
 	pkg "github.com/mudler/luet/pkg/package"
+	"github.com/narqo/go-badge"
 	"github.com/pkg/errors"
-
 	"gopkg.in/macaron.v1"
 	"gopkg.in/yaml.v2"
 )
@@ -146,6 +148,27 @@ func main() {
 		}
 		ctx.Data["RepositoryName"] = ctx.Params(":repository")
 		ctx.HTML(200, "repository")
+	})
+
+	m.Get("/badge/:repository", func(w http.ResponseWriter, ctx *macaron.Context) {
+		lock.Lock()
+		defer lock.Unlock()
+
+		var packN int
+		for _, r := range Repositories {
+			if r.GetName() == ctx.Params(":repository") {
+				packN = len(r.GetIndex())
+			}
+		}
+		badge, err := badge.RenderBytes(strconv.Itoa(packN), ctx.Params(":repository"), "#3C1")
+		if err != nil {
+			panic(err)
+		}
+		w.Header().Set("Content-Type", "image/svg+xml")
+		w.Header().Set("Content-Length", strconv.Itoa(len(badge)))
+		if _, err := w.Write(badge); err != nil {
+			log.Println("unable to write image.")
+		}
 	})
 
 	m.Get("/:repository/:packagecategory/:packagename", func(ctx *macaron.Context) {
