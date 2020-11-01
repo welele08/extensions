@@ -1,4 +1,4 @@
-FROM alpine:golang as builder
+FROM golang as builder
 
 COPY . /app
 RUN cd /app && make build
