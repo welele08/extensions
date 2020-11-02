@@ -10,6 +10,7 @@ body {
  font-family: 'Alata', sans-serif;
 }
 </style>
+<title>Showing {{.Package.Category}}/{{.Package.Name}}-{{.Package.Version}} in {{$reponame}} </title>
 </head>
 
 
@@ -32,7 +33,6 @@ body {
         <div class="column is-half">
               <h2 class="subtitle">
                       <span class="icon is-medium 	"> <i class="fas fa-info-circle"></i></span>
-
                 {{.Package.Description}}
              </h2>
         </div>
