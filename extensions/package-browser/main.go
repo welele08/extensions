@@ -116,6 +116,7 @@ func main() {
 		}
 		additionalData[r.Name] = make(map[string]string)
 		additionalData[r.Name]["github"] = r.Github
+		additionalData[r.Name]["url"] = r.Url
 		repos = append(repos, repo)
 	}
 
