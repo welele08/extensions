@@ -275,6 +275,8 @@ Available options:
 
   extract || return 1
 
+  rm -rf ${LUET_PORTAGE_TMPDIR} || true
+
   return 0
 }
 
