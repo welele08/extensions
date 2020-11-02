@@ -28,12 +28,15 @@ body {
 <section class="section">
     <div class="container">
 
+{{ $additionalData := .AdditionalData }}
 {{ range $_, $repo := .Repositories }}  
+{{ $data := index $additionalData $repo.Name}}
+{{ $github := index $data "github" }}
 <a href="/{{$repo.Name}}">
-    <div class="container tile m-1 notification is-primary">
+    <div class="container m-1 notification is-primary">
       <h1 class="title">{{$repo.Name}}</h1>
       <h2 class="subtitle">
-        
+        {{$repo.Description}} - {{$github}}
       </h2>
     </div>
     </a>

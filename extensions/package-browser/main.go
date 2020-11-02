@@ -54,7 +54,7 @@ urls:
 }
 
 type Repository struct {
-	Name, Url string
+	Name, Url, Github string
 }
 type Meta struct {
 	Repositories []Repository
@@ -105,6 +105,8 @@ func main() {
 		panic(fmt.Sprintf("Unmarshal err   #%v ", err))
 	}
 
+	additionalData := map[string]map[string]string{}
+
 	repos := installer.Repositories{}
 	for _, r := range metadata.Repositories {
 		repo, err := GetRepo(r.Name, r.Url)
@@ -112,6 +114,8 @@ func main() {
 			fmt.Println("Failed getting repo ", repo, err)
 			continue
 		}
+		additionalData[r.Name] = make(map[string]string)
+		additionalData[r.Name]["github"] = r.Github
 		repos = append(repos, repo)
 	}
 
@@ -136,16 +140,16 @@ func main() {
 	m.Get("/:repository", func(ctx *macaron.Context) {
 		lock.Lock()
 		defer lock.Unlock()
-		var res string
 		for _, r := range Repositories {
 			if r.GetName() == ctx.Params(":repository") {
-				for _, p := range r.GetTree().GetDatabase().World() {
-					ctx.Data["Packages"] = r.GetTree().GetDatabase().World()
-
-					res += r.GetName() + " " + p.GetName()
-				}
+				packs := r.GetTree().GetDatabase().World()
+				sort.SliceStable(packs, func(i, j int) bool {
+					return packs[i].GetName() < packs[j].GetName()
+				})
+				ctx.Data["Packages"] = packs
 			}
 		}
+		ctx.Data["AdditionalData"] = additionalData
 		ctx.Data["RepositoryName"] = ctx.Params(":repository")
 		ctx.HTML(200, "repository")
 	})
@@ -195,7 +199,9 @@ func main() {
 		}
 		ctx.Data["PackageCategory"] = ctx.Params(":packagecategory")
 		ctx.Data["PackageName"] = ctx.Params(":packagename")
+
 		ctx.Data["Packages"] = packs
+
 		ctx.HTML(200, "packages")
 	})
 
@@ -220,6 +226,7 @@ func main() {
 		}
 		ctx.Data["PackageCategory"] = ctx.Params(":packagecategory")
 		ctx.Data["PackageName"] = ctx.Params(":packagename")
+
 		ctx.Data["Packages"] = packs
 		ctx.HTML(200, "packages")
 	})
@@ -259,6 +266,10 @@ func main() {
 				packs = append(packs, p)
 			}
 		}
+		ctx.Data["AdditionalData"] = additionalData
+		sort.SliceStable(packs, func(i, j int) bool {
+			return packs[i].GetName() < packs[j].GetName()
+		})
 		ctx.Data["Packages"] = packs
 		ctx.Data["Repositories"] = Repositories
 		ctx.HTML(200, "index")
