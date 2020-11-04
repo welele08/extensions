@@ -133,7 +133,6 @@ func (bt *BuildTree) JSON() (string, error) {
 	result := []buildjob{}
 	for _, l := range bt.AllLevels() {
 		result = append(result, buildjob{Jobs: bt.AllInLevel(l)})
-		//	fmt.Println(strings.Join(bt.AllInLevel(l), " "))
 	}
 	dat, err := json.Marshal(&result)
 	return string(dat), err
