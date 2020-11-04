@@ -1,6 +1,9 @@
 package main
 
+// e.g. FORMAT=json TREE="$HOME/_git/portage-tree/multi-arch $HOME/_git/portage-tree/amd64" go run main.go layers/system-x layers/mate layers/gnome
+
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -122,6 +125,20 @@ func (bt *BuildTree) AllLevels() []int {
 	return ints(all)
 }
 
+func (bt *BuildTree) JSON() (string, error) {
+	type buildjob struct {
+		Jobs []string `json:"packages"`
+	}
+
+	result := []buildjob{}
+	for _, l := range bt.AllLevels() {
+		result = append(result, buildjob{Jobs: bt.AllInLevel(l)})
+		//	fmt.Println(strings.Join(bt.AllInLevel(l), " "))
+	}
+	dat, err := json.Marshal(&result)
+	return string(dat), err
+}
+
 func main() {
 	opts := compiler.NewDefaultCompilerOptions()
 	compilerSpecs := compiler.NewLuetCompilationspecs()
@@ -200,7 +217,17 @@ func main() {
 	}
 
 	bt.Order(compilationTree)
-	for _, l := range bt.AllLevels() {
-		fmt.Println(strings.Join(bt.AllInLevel(l), " "))
+
+	if os.Getenv("FORMAT") == "json" {
+		data, err := bt.JSON()
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(data)
+	} else {
+		for _, l := range bt.AllLevels() {
+			fmt.Println(strings.Join(bt.AllInLevel(l), " "))
+		}
 	}
+
 }
