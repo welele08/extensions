@@ -222,7 +222,7 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
         fi
 
         if [[ "$AUTOBUMP_REVDEPS" == "true" ]]; then
-            for i in $(luet tree pkglist -t $PWD -m $PACKAGE_CATEGORY/$PACKAGE_NAME --revdeps); do
+            for i in $(luet tree pkglist -b -t $PWD -m $PACKAGE_CATEGORY/$PACKAGE_NAME --revdeps); do
 
                 if [ "${AUTO_GIT}" == "true" ]; then
                     git checkout $BRANCH_NAME # Return to bump branch
