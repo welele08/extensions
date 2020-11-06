@@ -54,7 +54,7 @@ urls:
 }
 
 type Repository struct {
-	Name, Url, Github string
+	Name, Url, Github, Description string
 }
 type Meta struct {
 	Repositories []Repository
@@ -116,6 +116,7 @@ func main() {
 		}
 		additionalData[r.Name] = make(map[string]string)
 		additionalData[r.Name]["github"] = r.Github
+		additionalData[r.Name]["description"] = r.Description
 		additionalData[r.Name]["url"] = r.Url
 		repos = append(repos, repo)
 	}
@@ -261,16 +262,17 @@ func main() {
 	m.Get("/", func(ctx *macaron.Context) {
 		lock.Lock()
 		defer lock.Unlock()
-		var packs []pkg.Package
+
+		packs := map[string][]pkg.Package{}
+
 		for _, r := range Repositories {
-			for _, p := range r.GetTree().GetDatabase().World() {
-				packs = append(packs, p)
+			packages := r.GetTree().GetDatabase().World()
+			for _, p := range packages {
+				packs[r.GetName()] = append(packs[r.GetName()], p)
 			}
 		}
+
 		ctx.Data["AdditionalData"] = additionalData
-		sort.SliceStable(packs, func(i, j int) bool {
-			return packs[i].GetName() < packs[j].GetName()
-		})
 		ctx.Data["Packages"] = packs
 		ctx.Data["Repositories"] = Repositories
 		ctx.HTML(200, "index")
