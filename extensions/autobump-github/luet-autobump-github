@@ -148,10 +148,11 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
     elif [[ "$AUTOBUMP_STRATEGY" == "snapshot" ]] || [[ "$AUTOBUMP_STRATEGY" == "git_hash" ]]; then
         LATEST_TAG=${SNAPSHOT_PREFIX}$(date +%Y%m%d)
     elif [[ "$AUTOBUMP_STRATEGY" == "custom" ]]; then
+        VERSION_HOOK=$(yq r $DEFINITION_FILE 'labels."autobump.version_hook"')
         HOOK=$(yq r $DEFINITION_FILE 'labels."autobump.hook"')
+        LATEST_TAG=$(eval "$VERSION_HOOK")
         echo "Executing $HOOK"
-        LATEST_TAG=$(eval "$HOOK")
-        CUSTOM_VERSION=$LATEST_TAG
+        CUSTOM_VERSION=$(eval "$HOOK")
         LATEST_TAG=${SNAPSHOT_PREFIX}${LATEST_TAG}
     elif [ "${AUTOBUMP_STRATEGY}" == "gentoo" ]; then
         LATEST_GENTOO_VERSION=$(latest_gentoo $ORIGINAL_PACKAGE_NAME $ORIGINAL_PACKAGE_CATEGORY)
