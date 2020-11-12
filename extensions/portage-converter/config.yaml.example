@@ -1,0 +1,18 @@
+skipped_resolutions:
+  packages:
+    - name: gcc
+      category: sys-devel
+
+  categories:
+    - cat1
+    - cat2
+
+
+include_files:
+  - artefacts/file1.yml
+
+artefacts:
+- tree: multi-arch
+  packages:
+    - app-emulation/lxd
+    - app-emulation/lxc
