@@ -138,7 +138,8 @@ func (pc *PortageConverter) Generate() error {
 
 	for _, pkg := range listSolutions {
 
-		fmt.Println("Processing package ", pkg.String())
+		fmt.Println(fmt.Sprintf(
+			"Processing package %s-%s", pkg.Package.GetPackageName(), pkg.Package.GetPVR()))
 
 		err := os.MkdirAll(pkg.PackageDir, 0755)
 		if err != nil {

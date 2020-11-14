@@ -35,6 +35,57 @@ func NewQDependsResolver() *QDependsResolver {
 	return &QDependsResolver{}
 }
 
+func retrieveVersion(solution *PortageSolution) error {
+	var outBuffer, errBuffer bytes.Buffer
+
+	cmd := []string{"qdepends", "-qC"}
+
+	pkg := solution.Package.GetPackageName()
+	if solution.Package.Slot != "0" {
+		pkg = fmt.Sprintf("%s:%s", pkg, solution.Package.Slot)
+	}
+	cmd = append(cmd, pkg)
+
+	qdepends := exec.Command(cmd[0], cmd[1:]...)
+	qdepends.Stdout = helpers.NewNopCloseWriter(&outBuffer)
+	qdepends.Stderr = helpers.NewNopCloseWriter(&errBuffer)
+
+	err := qdepends.Start()
+	if err != nil {
+		return err
+	}
+
+	err = qdepends.Wait()
+	if err != nil {
+		return err
+	}
+
+	ans := qdepends.ProcessState.ExitCode()
+	if ans != 0 {
+		return errors.New("Error on running rdepends for package " + pkg + ": " + errBuffer.String())
+	}
+
+	out := outBuffer.String()
+	if len(out) > 0 {
+
+		words := strings.Split(out, " ")
+		p := strings.TrimSuffix(words[0], "\n")
+
+		gp, err := gentoo.ParsePackageStr(p[:len(p)-1])
+		if err != nil {
+			return errors.New("On convert pkg " + p + ": " + err.Error())
+		}
+
+		solution.Package.Version = gp.Version
+		solution.Package.VersionSuffix = gp.VersionSuffix
+
+	} else {
+		return errors.New("No version found for package " + solution.Package.GetPackageName())
+	}
+
+	return nil
+}
+
 func runQdepends(solution *PortageSolution, runtime bool) error {
 	var outBuffer, errBuffer bytes.Buffer
 
@@ -115,6 +166,12 @@ func (r *QDependsResolver) Resolve(pkg string) (*PortageSolution, error) {
 	}
 
 	ans.Package = *gp
+
+	// Retrive last version
+	err = retrieveVersion(ans)
+	if err != nil {
+		return nil, err
+	}
 
 	// Retrieve runtime deps
 	err = runQdepends(ans, true)
