@@ -11,6 +11,8 @@ skipped_resolutions:
 include_files:
   - artefacts/file1.yml
 
+build_template_file: templates/build.yaml.tmpl
+
 artefacts:
 - tree: multi-arch/packages
   packages:

@@ -20,6 +20,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -137,6 +138,13 @@ func (pc *PortageConverter) Generate() error {
 
 	for _, pkg := range listSolutions {
 
+		fmt.Println("Processing package ", pkg.String())
+
+		err := os.MkdirAll(pkg.PackageDir, 0755)
+		if err != nil {
+			return err
+		}
+
 		defFile := filepath.Join(pkg.PackageDir, "definition.yaml")
 		buildFile := filepath.Join(pkg.PackageDir, "build.yaml")
 
@@ -144,7 +152,10 @@ func (pc *PortageConverter) Generate() error {
 		pack := pkg.ToPack(true)
 
 		// Write definition.yaml
-		luet_tree.WriteDefinitionFile(pack, defFile)
+		err = luet_tree.WriteDefinitionFile(pack, defFile)
+		if err != nil {
+			return err
+		}
 
 		// create build.yaml
 		bPack := pkg.ToPack(false)
@@ -152,7 +163,10 @@ func (pc *PortageConverter) Generate() error {
 		buildPack.AddRequires(bPack.PackageRequires)
 		buildPack.AddConflicts(bPack.PackageConflicts)
 
-		buildPack.WriteBuildDefinition(buildFile)
+		err = buildPack.WriteBuildDefinition(buildFile)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
