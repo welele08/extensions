@@ -32,7 +32,7 @@ import (
 const (
 	cliName = `Copyright (c) 2020 - Daniele Rondina
 
-luet-portage-converter`
+Portage/Overlay converter for Luet specs.`
 
 	version = "0.1.0"
 )
@@ -69,7 +69,7 @@ func SanitizeCategory(cat string, slot string) string {
 	return ans
 }
 
-func (s *PortageSolution) ToPack() *luet_pkg.DefaultPackage {
+func (s *PortageSolution) ToPack(runtime bool) *luet_pkg.DefaultPackage {
 
 	// TODO: handle particular use cases
 	version := fmt.Sprintf("%s%s", s.Package.Version, s.Package.VersionSuffix)
@@ -86,7 +86,12 @@ func (s *PortageSolution) ToPack() *luet_pkg.DefaultPackage {
 		Labels:   labels,
 	}
 
-	for _, req := range s.RuntimeDeps {
+	deps := s.BuildDeps
+	if runtime {
+		deps = s.RuntimeDeps
+	}
+
+	for _, req := range deps {
 
 		dep := &luet_pkg.DefaultPackage{
 			Name:     req.Name,
@@ -118,7 +123,7 @@ func (s *PortageSolution) String() string {
 
 func Execute() {
 	var rootCmd = &cobra.Command{
-		Use:     "[OPTIONS] <pkg1> ... <pkgN>",
+		Use:     "luet-portage-converter --",
 		Short:   cliName,
 		Version: fmt.Sprintf("%s-g%s %s", version, BuildCommit, BuildTime),
 		PreRun: func(cmd *cobra.Command, args []string) {

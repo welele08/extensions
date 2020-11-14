@@ -75,6 +75,10 @@ func (pc *PortageConverter) LoadRules(file string) error {
 
 	pc.Specs = spec
 
+	if spec.BuildTmplFile == "" {
+		return errors.New("No build template file defined")
+	}
+
 	return nil
 }
 
@@ -86,6 +90,12 @@ func (pc *PortageConverter) Generate() error {
 	resolver := NewQDependsResolver()
 
 	listSolutions := []*PortageSolution{}
+
+	// Load Build template file
+	buildTmpl, err := NewLuetCompilationSpecSanitizedFromFile(pc.Specs.BuildTmplFile)
+	if err != nil {
+		return err
+	}
 
 	// Resolve all packages
 	for _, artefact := range pc.Specs.GetArtefacts() {
@@ -128,15 +138,21 @@ func (pc *PortageConverter) Generate() error {
 	for _, pkg := range listSolutions {
 
 		defFile := filepath.Join(pkg.PackageDir, "definition.yaml")
+		buildFile := filepath.Join(pkg.PackageDir, "build.yaml")
 
 		// Convert solution to luet package
-		pack := pkg.ToPack()
+		pack := pkg.ToPack(true)
 
 		// Write definition.yaml
 		luet_tree.WriteDefinitionFile(pack, defFile)
 
-		// TODO: create build.yaml
+		// create build.yaml
+		bPack := pkg.ToPack(false)
+		buildPack, _ := buildTmpl.Clone()
+		buildPack.AddRequires(bPack.PackageRequires)
+		buildPack.AddConflicts(bPack.PackageConflicts)
 
+		buildPack.WriteBuildDefinition(buildFile)
 	}
 
 	return nil

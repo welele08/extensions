@@ -12,7 +12,7 @@ include_files:
   - artefacts/file1.yml
 
 artefacts:
-- tree: multi-arch
+- tree: multi-arch/packages
   packages:
     - app-emulation/lxd
     - app-emulation/lxc

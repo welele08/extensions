@@ -29,8 +29,9 @@ import (
 type PortageConverterSpecs struct {
 	SkippedResolutions PortageConverterSkips `json:"skipped_resolutions,omitempty" yaml:"skipped_resolutions,omitempty"`
 
-	IncludeFiles []string                   `json:"include_files,omitempty" yaml:"include_files,omitempty"`
-	Artefacts    []PortageConverterArtefact `json:"artefacts,omitempty" yaml:"artefacts,omitempty"`
+	IncludeFiles  []string                   `json:"include_files,omitempty" yaml:"include_files,omitempty"`
+	Artefacts     []PortageConverterArtefact `json:"artefacts,omitempty" yaml:"artefacts,omitempty"`
+	BuildTmplFile string                     `json:"build_template_file" yaml:"build_template_file"`
 }
 
 type PortageConverterSkips struct {
@@ -85,12 +86,12 @@ func LoadSpecsFile(file string) (*PortageConverterSpecs, error) {
 		return nil, err
 	}
 
-	if len(ans.IncludeFiles) > 0 {
+	absPath, err := filepath.Abs(path.Dir(file))
+	if err != nil {
+		return nil, err
+	}
 
-		absPath, err := filepath.Abs(path.Dir(file))
-		if err != nil {
-			return nil, err
-		}
+	if len(ans.IncludeFiles) > 0 {
 
 		for _, include := range ans.IncludeFiles {
 
@@ -118,6 +119,11 @@ func LoadSpecsFile(file string) (*PortageConverterSpecs, error) {
 			}
 
 		}
+	}
+
+	if ans.BuildTmplFile != "" && ans.BuildTmplFile[0:1] != "/" {
+		// Convert in abs path
+		ans.BuildTmplFile = filepath.Join(absPath, ans.BuildTmplFile)
 	}
 
 	return ans, nil
