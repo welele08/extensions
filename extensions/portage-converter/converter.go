@@ -39,6 +39,8 @@ type PortageConverter struct {
 	Specs          *PortageConverterSpecs
 	TargetDir      string
 	Solutions      []*PortageSolution
+
+	Override bool
 }
 
 func NewPortageConverter(targetDir string) *PortageConverter {
@@ -170,7 +172,7 @@ func (pc *PortageConverter) createSolution(pkg, treePath string, stack []string)
 	}
 
 	// Check if specs is already present
-	if luet_helpers.Exists(filepath.Join(pkgDir, "definition.yaml")) {
+	if luet_helpers.Exists(filepath.Join(pkgDir, "definition.yaml")) && !pc.Override {
 		// Nothing to do
 		fmt.Println(fmt.Sprintf("Package %s already in tree.", pkg))
 		return nil
@@ -180,9 +182,18 @@ func (pc *PortageConverter) createSolution(pkg, treePath string, stack []string)
 	//       way. I'm not sure if this correct.
 
 	// Check every build dependency
+	var bdeps []gentoo.GentooPackage = make([]gentoo.GentooPackage, 0)
 	for _, bdep := range solution.BuildDeps {
 
 		fmt.Println(fmt.Sprintf("[%s] Analyzing buildtime dep %s...", pkg, bdep.GetPackageName()))
+
+		if pc.IsDep2Skip(&bdep) {
+			fmt.Println(fmt.Sprintf("[%s] Skipped dependency %s", pkg, bdep.GetPackageName()))
+			continue
+		}
+
+		bdeps = append(bdeps, bdep)
+
 		dep := luet_pkg.NewPackage(bdep.Name, ">=0",
 			[]*luet_pkg.DefaultPackage{},
 			[]*luet_pkg.DefaultPackage{})
@@ -203,11 +214,21 @@ func (pc *PortageConverter) createSolution(pkg, treePath string, stack []string)
 		}
 
 	}
+	solution.BuildDeps = bdeps
 
 	// Check every runtime deps
+	var rdeps []gentoo.GentooPackage = make([]gentoo.GentooPackage, 0)
 	for _, rdep := range solution.RuntimeDeps {
 
 		fmt.Println(fmt.Sprintf("[%s] Analyzing runtime dep %s...", pkg, rdep.GetPackageName()))
+
+		if pc.IsDep2Skip(&rdep) {
+			fmt.Println(fmt.Sprintf("[%s] Skipped dependency %s", pkg, rdep.GetPackageName()))
+			continue
+		}
+
+		rdeps = append(rdeps, rdep)
+
 		dep := luet_pkg.NewPackage(rdep.Name, ">=0",
 			[]*luet_pkg.DefaultPackage{},
 			[]*luet_pkg.DefaultPackage{})
@@ -227,6 +248,7 @@ func (pc *PortageConverter) createSolution(pkg, treePath string, stack []string)
 			}
 		}
 	}
+	solution.RuntimeDeps = rdeps
 
 	solution.PackageDir = pkgDir
 

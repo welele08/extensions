@@ -137,8 +137,10 @@ func Execute() {
 			treePath, _ := cmd.Flags().GetStringArray("tree")
 			to, _ := cmd.Flags().GetString("to")
 			rulesFile, _ := cmd.Flags().GetString("rules")
+			override, _ := cmd.Flags().GetBool("override")
 
 			converter := NewPortageConverter(to)
+			converter.Override = override
 			err := converter.LoadRules(rulesFile)
 			if err != nil {
 				fmt.Println(err)
@@ -163,6 +165,7 @@ func Execute() {
 	rootCmd.Flags().StringArrayP("tree", "t", []string{}, "Path of the tree to use.")
 	rootCmd.Flags().String("to", "", "Targer tree where bump new specs.")
 	rootCmd.Flags().String("rules", "", "Rules file.")
+	rootCmd.Flags().Bool("override", false, "Override existing specs if already present.")
 
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
