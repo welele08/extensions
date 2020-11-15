@@ -118,6 +118,21 @@ func (pc *PortageConverter) IsInStack(stack []string, pkg string) bool {
 	return ans
 }
 
+func (pc *PortageConverter) AppendIfNotPresent(list []gentoo.GentooPackage, pkg gentoo.GentooPackage) []gentoo.GentooPackage {
+	ans := list
+	isPresent := false
+	for _, p := range list {
+		if p.Name == pkg.Name && p.Category == pkg.Category {
+			isPresent = true
+			break
+		}
+	}
+	if !isPresent {
+		ans = append(ans, pkg)
+	}
+	return ans
+}
+
 func (pc *PortageConverter) createSolution(pkg, treePath string, stack []string) error {
 	resolver := NewQDependsResolver()
 
@@ -192,8 +207,6 @@ func (pc *PortageConverter) createSolution(pkg, treePath string, stack []string)
 			continue
 		}
 
-		bdeps = append(bdeps, bdep)
-
 		dep := luet_pkg.NewPackage(bdep.Name, ">=0",
 			[]*luet_pkg.DefaultPackage{},
 			[]*luet_pkg.DefaultPackage{})
@@ -202,15 +215,45 @@ func (pc *PortageConverter) createSolution(pkg, treePath string, stack []string)
 		// Check if it's present the build dep on the tree
 		p, _ := pc.ReciperBuild.GetDatabase().FindPackage(dep)
 		if p == nil {
-			dep_str := fmt.Sprintf("%s/%s", bdep.Category, bdep.Name)
-			if bdep.Slot != "0" {
-				dep_str += ":" + bdep.Slot
+
+			// Check if there is a runtime deps/provide for this
+			p, _ := pc.ReciperRuntime.GetDatabase().FindPackage(dep)
+			if p == nil {
+				dep_str := fmt.Sprintf("%s/%s", bdep.Category, bdep.Name)
+				if bdep.Slot != "0" {
+					dep_str += ":" + bdep.Slot
+				}
+				// Now we use the same treePath.
+				err := pc.createSolution(dep_str, treePath, stack)
+				if err != nil {
+					return err
+				}
+
+				bdeps = pc.AppendIfNotPresent(bdeps, bdep)
+			} else {
+
+				fmt.Println(fmt.Sprintf("[%s] For buildtime dep %s is used package %s",
+					pkg, bdep.GetPackageName(), p.HumanReadableString()))
+
+				gp := gentoo.GentooPackage{
+					Name:     p.GetName(),
+					Category: p.GetCategory(),
+					Version:  ">=0",
+					Slot:     "0",
+				}
+				bdeps = pc.AppendIfNotPresent(bdeps, gp)
 			}
-			// Now we use the same treePath.
-			err := pc.createSolution(dep_str, treePath, stack)
-			if err != nil {
-				return err
+		} else {
+			fmt.Println(fmt.Sprintf("[%s] For build-time dep %s is used package %s",
+				pkg, bdep.GetPackageName(), p.HumanReadableString()))
+
+			gp := gentoo.GentooPackage{
+				Name:     p.GetName(),
+				Category: p.GetCategory(),
+				Version:  ">=0",
+				Slot:     "0",
 			}
+			bdeps = pc.AppendIfNotPresent(bdeps, gp)
 		}
 
 	}
@@ -226,8 +269,6 @@ func (pc *PortageConverter) createSolution(pkg, treePath string, stack []string)
 			fmt.Println(fmt.Sprintf("[%s] Skipped dependency %s", pkg, rdep.GetPackageName()))
 			continue
 		}
-
-		rdeps = append(rdeps, rdep)
 
 		dep := luet_pkg.NewPackage(rdep.Name, ">=0",
 			[]*luet_pkg.DefaultPackage{},
@@ -246,6 +287,20 @@ func (pc *PortageConverter) createSolution(pkg, treePath string, stack []string)
 			if err != nil {
 				return err
 			}
+
+			rdeps = pc.AppendIfNotPresent(rdeps, rdep)
+
+		} else {
+			fmt.Println(fmt.Sprintf("[%s] For runtime dep %s is used package %s",
+				pkg, rdep.GetPackageName(), p.HumanReadableString()))
+
+			gp := gentoo.GentooPackage{
+				Name:     p.GetName(),
+				Category: p.GetCategory(),
+				Version:  ">=0",
+				Slot:     "0",
+			}
+			rdeps = pc.AppendIfNotPresent(rdeps, gp)
 		}
 	}
 	solution.RuntimeDeps = rdeps

@@ -147,6 +147,8 @@ func runQdepends(solution *PortageSolution, runtime bool) error {
 
 		for _, dep := range deps {
 
+			originalDep := dep
+
 			// Drop garbage string
 			if len(dep) == 0 {
 				continue
@@ -177,13 +179,14 @@ func runQdepends(solution *PortageSolution, runtime bool) error {
 				dep = dep[0:strings.Index(dep, "[")]
 			}
 
-			fmt.Println(fmt.Sprintf("[%s] Resolving dep '%s'...", solution.Package.GetPackageName(), dep))
-
 			gp, err := gentoo.ParsePackageStr(dep)
 			if err != nil {
 				return errors.New("On convert dep " + dep + ": " + err.Error())
 			}
 
+			fmt.Println(fmt.Sprintf("[%s] Resolving dep '%s' -> %s...",
+				solution.Package.GetPackageName(), originalDep,
+				gp.GetPackageName()))
 			SanitizeSlot(gp)
 			if runtime {
 				solution.RuntimeDeps = append(solution.RuntimeDeps, *gp)

@@ -64,7 +64,9 @@ func SanitizeCategory(cat string, slot string) string {
 			slot = slot[0:strings.Index(slot, "/")]
 		}
 
-		ans = fmt.Sprintf("%s-%s", cat, slot)
+		if slot != "0" {
+			ans = fmt.Sprintf("%s-%s", cat, slot)
+		}
 	}
 	return ans
 }
