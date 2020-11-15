@@ -86,6 +86,16 @@ func retrieveVersion(solution *PortageSolution) error {
 	return nil
 }
 
+func SanitizeSlot(pkg *gentoo.GentooPackage) {
+	if strings.Index(pkg.Slot, "/") > 0 {
+		pkg.Slot = pkg.Slot[0:strings.Index(pkg.Slot, "/")]
+	}
+
+	if pkg.Slot == "*" {
+		pkg.Slot = "0"
+	}
+}
+
 func runQdepends(solution *PortageSolution, runtime bool) error {
 	var outBuffer, errBuffer bytes.Buffer
 
@@ -127,14 +137,52 @@ func runQdepends(solution *PortageSolution, runtime bool) error {
 		// Drop prefix
 		out = out[6:]
 
+		// Multiple match returns multiple rows. I get the first.
+		rows := strings.Split(out, "\n")
+		if len(rows) > 1 {
+			out = rows[0]
+		}
+
 		deps := strings.Split(out, " ")
 
 		for _, dep := range deps {
 
-			gp, err := gentoo.ParsePackageStr(strings.TrimSuffix(dep, "\n"))
+			// Drop garbage string
+			if len(dep) == 0 {
+				continue
+			}
+
+			dep = strings.Trim(dep, "\n")
+			dep = strings.Trim(dep, "\r")
+			// Drop ! ... not well supported by pkgs-checker now.
+			dep = strings.Trim(dep, "!")
+
+			if strings.Index(dep, ":") > 0 {
+
+				depWithoutSlot := dep[0:strings.Index(dep, ":")]
+				slot := dep[strings.Index(dep, ":")+1:]
+				// i found slot but i want drop all subslot
+				if strings.Index(slot, "/") > 0 {
+					slot = slot[0:strings.Index(slot, "/")]
+				}
+				dep = depWithoutSlot + ":" + slot
+			}
+
+			// Ignoring use flags for now
+			// >=dev-python/setuptools-42.0.2[python_targets_python3_7(+),-python_single_target_python3_6(+),-python_single_target_python3_7(+),-python_single_target_python3_8(+)]
+			// it's not supported by pkgs-checker
+			if strings.Index(dep, "[") > 0 {
+				dep = dep[0:strings.Index(dep, "[")]
+			}
+
+			fmt.Println(fmt.Sprintf("[%s] Resolving dep '%s'...", solution.Package.GetPackageName(), dep))
+
+			gp, err := gentoo.ParsePackageStr(dep)
 			if err != nil {
 				return errors.New("On convert dep " + dep + ": " + err.Error())
 			}
+
+			SanitizeSlot(gp)
 			if runtime {
 				solution.RuntimeDeps = append(solution.RuntimeDeps, *gp)
 			} else {
@@ -170,7 +218,23 @@ func (r *QDependsResolver) Resolve(pkg string) (*PortageSolution, error) {
 	// Retrive last version
 	err = retrieveVersion(ans)
 	if err != nil {
-		return nil, err
+		// If with slot trying to use a package without slot
+		if strings.Index(pkg, ":") > 0 {
+			pkg = pkg[0:strings.Index(pkg, ":")]
+			gp, err = gentoo.ParsePackageStr(pkg)
+			if err != nil {
+				return nil, err
+			}
+
+			ans.Package = *gp
+			err = retrieveVersion(ans)
+			if err != nil {
+				return nil, err
+			}
+
+		} else {
+			return nil, err
+		}
 	}
 
 	// Retrieve runtime deps
@@ -184,6 +248,9 @@ func (r *QDependsResolver) Resolve(pkg string) (*PortageSolution, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Sanitize slot
+	SanitizeSlot(&ans.Package)
 
 	return ans, nil
 }

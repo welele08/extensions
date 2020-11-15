@@ -33,18 +33,19 @@ import (
 
 type PortageConverter struct {
 	Config         *luet_config.LuetConfig
-	Cache          map[string]*gentoo.GentooPackage
+	Cache          map[string]*PortageSolution
 	ReciperBuild   luet_tree.Builder
 	ReciperRuntime luet_tree.Builder
 	Specs          *PortageConverterSpecs
 	TargetDir      string
+	Solutions      []*PortageSolution
 }
 
 func NewPortageConverter(targetDir string) *PortageConverter {
 	return &PortageConverter{
 		// TODO: we use it as singleton
 		Config:         luet_config.LuetCfg,
-		Cache:          make(map[string]*gentoo.GentooPackage, 0),
+		Cache:          make(map[string]*PortageSolution, 0),
 		ReciperBuild:   luet_tree.NewCompilerRecipe(luet_pkg.NewInMemoryDatabase(false)),
 		ReciperRuntime: luet_tree.NewInstallerRecipe(luet_pkg.NewInMemoryDatabase(false)),
 		TargetDir:      targetDir,
@@ -87,11 +88,156 @@ func (pc *PortageConverter) GetSpecs() *PortageConverterSpecs {
 	return pc.Specs
 }
 
-func (pc *PortageConverter) Generate() error {
+func (pc *PortageConverter) IsDep2Skip(pkg *gentoo.GentooPackage) bool {
+
+	for _, skipPkg := range pc.Specs.SkippedResolutions.Packages {
+		if skipPkg.Name == pkg.Name && skipPkg.Category == pkg.Category {
+			return true
+		}
+	}
+
+	for _, cat := range pc.Specs.SkippedResolutions.Categories {
+		if cat == pkg.Category {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (pc *PortageConverter) IsInStack(stack []string, pkg string) bool {
+	ans := false
+	for _, p := range stack {
+		if p == pkg {
+			ans = true
+			break
+		}
+	}
+	return ans
+}
+
+func (pc *PortageConverter) createSolution(pkg, treePath string, stack []string) error {
 	resolver := NewQDependsResolver()
 
-	listSolutions := []*PortageSolution{}
+	fmt.Println(fmt.Sprintf("Creating solution for %s (%s)...", pkg, treePath))
 
+	if pc.IsInStack(stack, pkg) {
+		return errors.New(fmt.Sprintf("Cycle dep found for %s: %s", pkg, stack))
+	}
+
+	gp, err := gentoo.ParsePackageStr(pkg)
+	// Avoid to resolve it if it's skipped. Workaround to qdepends problems.
+	if err != nil {
+		return err
+	}
+
+	if pc.IsDep2Skip(gp) {
+		fmt.Println(fmt.Sprintf("[%s] Skipped dependency %s", stack[len(stack)-1], pkg))
+		return nil
+	}
+
+	solution, err := resolver.Resolve(pkg)
+	if err != nil {
+		return errors.New(fmt.Sprintf("Error on resolve %s: %s", pkg, err.Error()))
+	}
+
+	stack = append(stack, pkg)
+
+	cacheKey := fmt.Sprintf("%s/%s",
+		SanitizeCategory(solution.Package.Category, solution.Package.Slot),
+		solution.Package.Name)
+
+	if _, ok := pc.Cache[cacheKey]; ok {
+		fmt.Println(fmt.Sprintf("Package %s already in cache.", pkg))
+		// Nothing to do
+		return nil
+	}
+
+	pkgDir := fmt.Sprintf("%s/%s/%s/",
+		filepath.Join(pc.TargetDir, treePath),
+		solution.Package.Category, solution.Package.Name)
+
+	if solution.Package.Slot != "0" {
+		slot := solution.Package.Slot
+		// Ignore sub-slot
+		if strings.Contains(solution.Package.Slot, "/") {
+			slot = solution.Package.Slot[0:strings.Index(slot, "/")]
+		}
+
+		pkgDir = fmt.Sprintf("%s/%s-%s/%s",
+			filepath.Join(pc.TargetDir, treePath),
+			solution.Package.Category, slot, solution.Package.Name)
+	}
+
+	// Check if specs is already present
+	if luet_helpers.Exists(filepath.Join(pkgDir, "definition.yaml")) {
+		// Nothing to do
+		fmt.Println(fmt.Sprintf("Package %s already in tree.", pkg))
+		return nil
+	}
+
+	// TODO: atm I handle build-dep and runtime-dep at the same
+	//       way. I'm not sure if this correct.
+
+	// Check every build dependency
+	for _, bdep := range solution.BuildDeps {
+
+		fmt.Println(fmt.Sprintf("[%s] Analyzing buildtime dep %s...", pkg, bdep.GetPackageName()))
+		dep := luet_pkg.NewPackage(bdep.Name, ">=0",
+			[]*luet_pkg.DefaultPackage{},
+			[]*luet_pkg.DefaultPackage{})
+		dep.Category = SanitizeCategory(bdep.Category, bdep.Slot)
+
+		// Check if it's present the build dep on the tree
+		p, _ := pc.ReciperBuild.GetDatabase().FindPackage(dep)
+		if p == nil {
+			dep_str := fmt.Sprintf("%s/%s", bdep.Category, bdep.Name)
+			if bdep.Slot != "0" {
+				dep_str += ":" + bdep.Slot
+			}
+			// Now we use the same treePath.
+			err := pc.createSolution(dep_str, treePath, stack)
+			if err != nil {
+				return err
+			}
+		}
+
+	}
+
+	// Check every runtime deps
+	for _, rdep := range solution.RuntimeDeps {
+
+		fmt.Println(fmt.Sprintf("[%s] Analyzing runtime dep %s...", pkg, rdep.GetPackageName()))
+		dep := luet_pkg.NewPackage(rdep.Name, ">=0",
+			[]*luet_pkg.DefaultPackage{},
+			[]*luet_pkg.DefaultPackage{})
+		dep.Category = SanitizeCategory(rdep.Category, rdep.Slot)
+
+		// Check if it's present the build dep on the tree
+		p, _ := pc.ReciperRuntime.GetDatabase().FindPackage(dep)
+		if p == nil {
+			dep_str := fmt.Sprintf("%s/%s", rdep.Category, rdep.Name)
+			if rdep.Slot != "0" {
+				dep_str += ":" + rdep.Slot
+			}
+			// Now we use the same treePath.
+			err := pc.createSolution(dep_str, treePath, stack)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	solution.PackageDir = pkgDir
+
+	pc.Cache[cacheKey] = solution
+
+	pc.Solutions = append(pc.Solutions, solution)
+
+	return nil
+}
+
+func (pc *PortageConverter) Generate() error {
 	// Load Build template file
 	buildTmpl, err := NewLuetCompilationSpecSanitizedFromFile(pc.Specs.BuildTmplFile)
 	if err != nil {
@@ -102,41 +248,15 @@ func (pc *PortageConverter) Generate() error {
 	for _, artefact := range pc.Specs.GetArtefacts() {
 		for _, pkg := range artefact.GetPackages() {
 
-			solution, err := resolver.Resolve(pkg)
+			fmt.Println(fmt.Sprintf("Analyzing package %s...", pkg))
+			err := pc.createSolution(pkg, artefact.GetTree(), []string{})
 			if err != nil {
 				return err
 			}
-
-			pkgDir := fmt.Sprintf("%s/%s/%s/",
-				filepath.Join(pc.TargetDir, artefact.GetTree()),
-				solution.Package.Category, solution.Package.Name)
-
-			if solution.Package.Slot != "0" {
-				slot := solution.Package.Slot
-				// Ignore sub-slot
-				if strings.Contains(solution.Package.Slot, "/") {
-					slot = solution.Package.Slot[0:strings.Index(slot, "/")]
-				}
-
-				pkgDir = fmt.Sprintf("%s/%s-%s/%s",
-					filepath.Join(pc.TargetDir, artefact.GetTree()),
-					solution.Package.Category, slot, solution.Package.Name)
-			}
-
-			// Check if specs is already present
-			if luet_helpers.Exists(filepath.Join(pkgDir, "definition.yaml")) {
-				// Nothing to do
-				continue
-			}
-
-			solution.PackageDir = pkgDir
-
-			listSolutions = append(listSolutions, solution)
-
 		}
 	}
 
-	for _, pkg := range listSolutions {
+	for _, pkg := range pc.Solutions {
 
 		fmt.Println(fmt.Sprintf(
 			"Processing package %s-%s", pkg.Package.GetPackageName(), pkg.Package.GetPVR()))
