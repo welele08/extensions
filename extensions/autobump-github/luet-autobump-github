@@ -259,7 +259,7 @@ for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
                 fi
 
                 ver=$(yq r $deffile ${YQ_ARGS}version)
-                
+                revver=1
 
                 if [[ $ver =~ "+" ]]; then
                     revver=$(echo "$ver" | cut -d'+' -f 2)
