@@ -8,6 +8,7 @@
 # Options
 AUTO_GIT="${AUTO_GIT:-false}"
 
+TOKEN="${TOKEN:-}" # e.g. -H "Authorization: token TOKEN"
 START_GIT_BRANCH="$(git rev-parse --abbrev-ref HEAD)"
 HUB_ARGS="${HUB_ARGS:--b $START_GIT_BRANCH}"
 ROOT_DIR="${ROOT_DIR:-$PWD}"
@@ -61,15 +62,21 @@ latest_gentoo() {
 # Luet tree package list
 PKG_LIST=$(luet tree pkglist --tree $TREE_DIR -o json)
 
-# For each package in the tree, get the path where the spec resides
-# e.g. packages/acct-group/amavis/0/
-for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
+for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
 
-    PACKAGE_PATH=$i
-    PACKAGE_NAME=$(echo "$PKG_LIST" | jq -r ".packages[] | select(.path==\"$i\").name")
-    PACKAGE_CATEGORY=$(echo "$PKG_LIST" | jq -r ".packages[] | select(.path==\"$i\").category")
-    PACKAGE_VERSION=$(echo "$PKG_LIST" | jq -r ".packages[] | select(.path==\"$i\").version")
+    PACKAGE_PATH=$(echo "$i" | jq -r ".path")
+    PACKAGE_NAME=$(echo "$i" | jq -r ".name")
+    PACKAGE_CATEGORY=$(echo "$i" | jq -r ".category")
+    PACKAGE_VERSION=$(echo "$i" | jq -r ".version")
     DEFINITION_FILE="$PACKAGE_PATH/definition.yaml"
+    YQ_ARGS=
+
+    if [ -e "$PACKAGE_PATH/collection.yaml" ]; then
+        index=$(yq r $PACKAGE_PATH/collection.yaml -j | jq ".packages | map(.name==\"$PACKAGE_NAME\" and .category==\"$PACKAGE_CATEGORY\") | index(true)")
+        YQ_ARGS="packages[$index]."
+        echo "Collection found, package $index"
+        DEFINITION_FILE="$PACKAGE_PATH/collection.yaml"
+    fi
 
     STRIPPED_PACKAGE_VERSION=${PACKAGE_VERSION%\+*}
     VERSION=$STRIPPED_PACKAGE_VERSION
@@ -77,43 +84,43 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
     ## Reading Package labels starts
 
     # Check if ignore flag is present
-    AUTOBUMP_IGNORE=$(yq r $DEFINITION_FILE 'labels."autobump.ignore"')
+    AUTOBUMP_IGNORE=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"autobump.ignore\"")
     if [ "${AUTOBUMP_IGNORE}" = "1" ] ; then
       continue
     fi
 
     # Best effort: get original package name from labels
-    GITHUB_REPO=$(yq r $DEFINITION_FILE 'labels."github.repo"')
-    GITHUB_OWNER=$(yq r $DEFINITION_FILE 'labels."github.owner"')
+    GITHUB_REPO=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"github.repo\"")
+    GITHUB_OWNER=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"github.owner\"")
 
     # Strategy can be: release, tags or "refs"
     # Refs parses thru git tags
-    AUTOBUMP_STRATEGY=$(yq r $DEFINITION_FILE 'labels."autobump.strategy"')
+    AUTOBUMP_STRATEGY=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"autobump.strategy\"")
 
     # Package can opt-in for automatic revdeps revbump
-    AUTOBUMP_REVDEPS=$(yq r $DEFINITION_FILE 'labels."autobump.revdeps"')
+    AUTOBUMP_REVDEPS=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"autobump.revdeps\"")
     AUTOBUMP_REVDEPS="${AUTOBUMP_REVDEPS:-true}"
 
     # Prefix to trim from the version
-    TRIM_PREFIX=$(yq r $DEFINITION_FILE 'labels."autobump.trim_prefix"')
+    TRIM_PREFIX=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"autobump.trim_prefix\"")
 
     # A json map of replace rules
-    STRING_REPLACE=$(yq r $DEFINITION_FILE 'labels."autobump.string_replace"')
+    STRING_REPLACE=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"autobump.string_replace\"")
 
 
     # A json list of strings contained in the releases to skip (e.g. betas)
-    SKIP_IF_CONTAIN=$(yq r $DEFINITION_FILE 'labels."autobump.skip_if_contains"')
+    SKIP_IF_CONTAIN=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"autobump.skip_if_contains\"")
 
     # You can specify a string match that should be contained in the versions
     # to be considered. Valid for "refs" and tagging strategy
-    VERSION_CONTAINS=$(yq r $DEFINITION_FILE 'labels."autobump.version_contains"')
+    VERSION_CONTAINS=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"autobump.version_contains\"")
 
-    AUTOBUMP_REFIX=$(yq r $DEFINITION_FILE 'labels."autobump.prefix"')
+    AUTOBUMP_REFIX=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"autobump.prefix\"")
 
     # Best effort: get original package name from labels
-    ORIGINAL_PACKAGE_NAME=$(yq r $DEFINITION_FILE 'labels."original.package.name"')
-    ORIGINAL_PACKAGE_CATEGORY=$(yq r $DEFINITION_FILE 'labels."original.package.category"')
-    ORIGINAL_PACKAGE_VERSION=$(yq r $DEFINITION_FILE 'labels."original.package.version"')
+    ORIGINAL_PACKAGE_NAME=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"original.package.name\"")
+    ORIGINAL_PACKAGE_CATEGORY=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"original.package.category\"")
+    ORIGINAL_PACKAGE_VERSION=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"original.package.version\"")
 
     ## Reading Package labels ends
 
@@ -142,14 +149,14 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
     SNAPSHOT_PREFIX=${AUTOBUMP_REFIX:-0.}
 
     if [[ "$AUTOBUMP_STRATEGY" == "release" ]]; then
-        LATEST_TAG=$(curl https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest -s | jq .tag_name -r)
+        LATEST_TAG=$(curl -H "Authorization: token $TOKEN" https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest -s | jq .tag_name -r)
     elif [[ "$AUTOBUMP_STRATEGY" == "refs" ]]; then
-        LATEST_TAG=$(curl https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/git/refs/tags -s | jq '.[].ref | sub("refs\/tags\/"; "") | select(. | test("'$VERSION_CONTAINS'"))' -r | tail -n1 )
+        LATEST_TAG=$(curl -H "Authorization: token $TOKEN" https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/git/refs/tags -s | jq '.[].ref | sub("refs\/tags\/"; "") | select(. | test("'$VERSION_CONTAINS'"))' -r | tail -n1 )
     elif [[ "$AUTOBUMP_STRATEGY" == "snapshot" ]] || [[ "$AUTOBUMP_STRATEGY" == "git_hash" ]]; then
         LATEST_TAG=${SNAPSHOT_PREFIX}$(date +%Y%m%d)
     elif [[ "$AUTOBUMP_STRATEGY" == "custom" ]]; then
-        VERSION_HOOK=$(yq r $DEFINITION_FILE 'labels."autobump.version_hook"')
-        HOOK=$(yq r $DEFINITION_FILE 'labels."autobump.hook"')
+        VERSION_HOOK=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"autobump.version_hook\"")
+        HOOK=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"autobump.hook\"")
         LATEST_TAG=$(eval "$VERSION_HOOK")
         echo "Executing $HOOK"
         CUSTOM_VERSION=$(eval "$HOOK")
@@ -164,7 +171,7 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
     elif [ "${AUTOBUMP_STRATEGY}" == "sabayon" ]; then
         LATEST_TAG=$(latest_sabayon $ORIGINAL_PACKAGE_NAME $ORIGINAL_PACKAGE_CATEGORY)
     else
-        LATEST_TAG=$(curl https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/tags -s | jq -r '.[].name | select(. | test("'$VERSION_CONTAINS'"))' -r | head -1 )
+        LATEST_TAG=$(curl -H "Authorization: token $TOKEN" https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/tags -s | jq -r '.[].name | select(. | test("'$VERSION_CONTAINS'"))' -r | head -1 )
     fi
 
     ORIGINAL_NEW_TAG=${LATEST_TAG}
@@ -184,7 +191,7 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
         fi
     done
 
-    echo "Latest version found for $PACKAGE_NAME is: $LATEST_TAG"
+    echo "Latest version found for $PACKAGE_NAME is: $LATEST_TAG. Current at $STRIPPED_PACKAGE_VERSION"
 
     [[ "$LATEST_TAG" == "null" ]] && LATEST_TAG=
     # versions are mismatching. Bump the version
@@ -202,23 +209,23 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
         package_dir=$(dirname $PACKAGE_PATH)
 
         # Update runtime version
-        yq w -i $DEFINITION_FILE version "$LATEST_TAG" --style double
+        yq w -i $DEFINITION_FILE "${YQ_ARGS}version" "$LATEST_TAG" --style double
 
         if [ "${AUTOBUMP_STRATEGY}" == "gentoo" ] || [ "${AUTOBUMP_STRATEGY}" == "sabayon" ]; then
-            yq w -i $DEFINITION_FILE 'labels."original.package.version"' "$ORIGINAL_NEW_TAG" --style double
-            yq w -i $DEFINITION_FILE 'labels."original.package.name"' "$ORIGINAL_PACKAGE_NAME" --style double
-            yq w -i $DEFINITION_FILE 'labels."original.package.category"' "$ORIGINAL_PACKAGE_CATEGORY" --style double
+            yq w -i $DEFINITION_FILE "${YQ_ARGS}labels.\"original.package.version\"" "$ORIGINAL_NEW_TAG" --style double
+            yq w -i $DEFINITION_FILE "${YQ_ARGS}labels.\"original.package.name\"" "$ORIGINAL_PACKAGE_NAME" --style double
+            yq w -i $DEFINITION_FILE "${YQ_ARGS}labels.\"original.package.category\"" "$ORIGINAL_PACKAGE_CATEGORY" --style double
         fi
 
         if [ "${AUTOBUMP_STRATEGY}" == "custom" ]; then
-            yq w -i $DEFINITION_FILE 'labels."package.version"' "$CUSTOM_VERSION" --style double
+            yq w -i $DEFINITION_FILE "${YQ_ARGS}labels.\"package.version\"" "$CUSTOM_VERSION" --style double
         fi
 
         if [[ "$AUTOBUMP_STRATEGY" == "git_hash" ]]; then
-            GIT_BRANCH=$(yq r $DEFINITION_FILE 'labels."autobump.git.branch"')
+            GIT_BRANCH=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"autobump.git.branch\"")
             GIT_BRANCH="${GIT_BRANCH:-master}"
-            SHA=$(curl https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/git/refs/heads/$GIT_BRANCH -s | jq -r '.object.sha')
-            yq w -i $DEFINITION_FILE 'labels."git.hash"' "$SHA" --style double
+            SHA=$(curl -H "Authorization: token $TOKEN" https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/git/refs/heads/$GIT_BRANCH -s | jq -r '.object.sha')
+            yq w -i $DEFINITION_FILE "${YQ_ARGS}labels.\"git.hash\"" "$SHA" --style double
         fi
 
         if [ "${AUTO_GIT}" == "true" ]; then
@@ -231,6 +238,7 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
 
             git checkout $START_GIT_BRANCH # Return to original branch
         fi
+    
 
         if [[ "$AUTOBUMP_REVDEPS" == "true" ]]; then
             for i in $(luet tree pkglist -b -t $PWD -m $PACKAGE_CATEGORY/$PACKAGE_NAME --revdeps); do
@@ -243,8 +251,24 @@ for i in $(echo "$PKG_LIST" | jq -r '.packages[].path'); do
                 IFS=/ read -a package <<< $i
                 path=$(echo "$PKG_LIST" | jq -r ".packages[] | select(.name==\"${package[1]}\" and .category==\"${package[0]}\").path")
 
-                # Update runtime version
-                luet tree bump -f $path/definition.yaml
+                deffile=$path/definition.yaml
+                if [ -e "$path/collection.yaml" ]; then
+                    index=$(yq r $PACKAGE_PATH/collection.yaml -j | jq ".packages | map(.name==\"${package[1]}\" and .category==\"${package[0]}\") | index(true)")
+                    YQ_ARGS="packages[$index]."
+                    deffile="$PACKAGE_PATH/collection.yaml"
+                fi
+
+                ver=$(yq r $deffile ${YQ_ARGS}version)
+                
+
+                if [[ $ver =~ "+" ]]; then
+                    revver=$(echo "$ver" | cut -d'+' -f 2)
+                    revver=$((revver+1))
+                fi
+                ver=${ver%\+*}
+                ver="${ver}+${revver}"
+     
+                yw w -i $deffile ${YQ_ARGS}version "$ver"
 
                 if [ "${AUTO_GIT}" == "true" ]; then
                     git add $path/
