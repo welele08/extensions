@@ -268,7 +268,7 @@ for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
                 ver=${ver%\+*}
                 ver="${ver}+${revver}"
      
-                yw w -i $deffile ${YQ_ARGS}version "$ver"
+                yq w -i $deffile ${YQ_ARGS}version "$ver"
 
                 if [ "${AUTO_GIT}" == "true" ]; then
                     git add $path/
