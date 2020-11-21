@@ -157,7 +157,7 @@ func runQdepends(solution *PortageSolution, runtime bool) error {
 			dep = strings.Trim(dep, "\n")
 			dep = strings.Trim(dep, "\r")
 			// Ignore ! / conflict for now ... not well supported by pkgs-checker now.
-			if strings.Index(dep, "!") > 0 {
+			if strings.Index(dep, "!") >= 0 {
 				continue
 			}
 
