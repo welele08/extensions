@@ -1,4 +1,4 @@
-BUNDLED_EXTENSIONS = autobump-github geniso genimage qa-artefacts migrate-entropy package-browser parallel-tools
+BUNDLED_EXTENSIONS = autobump-github geniso genimage qa-artefacts migrate-entropy package-browser parallel-tools portage-converter
 UBINDIR ?= /usr/bin
 DESTDIR ?=
 
