@@ -118,6 +118,10 @@ func LoadSpecsFile(file string) (*PortageConverterSpecs, error) {
 					data.SkippedResolutions.Categories...)
 			}
 
+			if len(data.Artefacts) > 0 {
+				ans.Artefacts = append(ans.Artefacts, data.Artefacts...)
+			}
+
 		}
 	}
 
