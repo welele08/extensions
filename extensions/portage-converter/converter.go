@@ -259,6 +259,41 @@ func (pc *PortageConverter) createSolution(pkg, treePath string, stack []string)
 	}
 	solution.BuildDeps = bdeps
 
+	// Check buildtime conflicts
+	var bconflicts []gentoo.GentooPackage = make([]gentoo.GentooPackage, 0)
+	for _, bconflict := range solution.BuildConflicts {
+
+		fmt.Println(fmt.Sprintf("[%s] Analyzing runtime conflict %s...",
+			pkg, bconflict.GetPackageName()))
+
+		if pc.IsDep2Skip(&bconflict) {
+			fmt.Println(fmt.Sprintf("[%s] Skipped dependency %s", pkg, bconflict.GetPackageName()))
+			continue
+		}
+
+		dep := luet_pkg.NewPackage(bconflict.Name, ">=0",
+			[]*luet_pkg.DefaultPackage{},
+			[]*luet_pkg.DefaultPackage{})
+		dep.Category = SanitizeCategory(bconflict.Category, bconflict.Slot)
+
+		// Check if it's present the build dep on the tree
+		p, _ := pc.ReciperRuntime.GetDatabase().FindPackage(dep)
+		if p == nil {
+			fmt.Println(fmt.Sprintf("[%s] Package in conflict %s not in tree. I ignore it.",
+				pkg))
+			continue
+		}
+
+		gp := gentoo.GentooPackage{
+			Name:     p.GetName(),
+			Category: p.GetCategory(),
+			Version:  ">=0",
+			Slot:     "0",
+		}
+		bconflicts = pc.AppendIfNotPresent(bconflicts, gp)
+	}
+	solution.BuildConflicts = bconflicts
+
 	// Check every runtime deps
 	var rdeps []gentoo.GentooPackage = make([]gentoo.GentooPackage, 0)
 	for _, rdep := range solution.RuntimeDeps {
@@ -304,6 +339,42 @@ func (pc *PortageConverter) createSolution(pkg, treePath string, stack []string)
 		}
 	}
 	solution.RuntimeDeps = rdeps
+
+	// Check runtime conflicts
+	var rconflicts []gentoo.GentooPackage = make([]gentoo.GentooPackage, 0)
+	for _, rconflict := range solution.RuntimeConflicts {
+
+		fmt.Println(fmt.Sprintf("[%s] Analyzing runtime conflict %s...",
+			pkg, rconflict.GetPackageName()))
+
+		if pc.IsDep2Skip(&rconflict) {
+			fmt.Println(fmt.Sprintf("[%s] Skipped dependency %s", pkg, rconflict.GetPackageName()))
+			continue
+		}
+
+		dep := luet_pkg.NewPackage(rconflict.Name, ">=0",
+			[]*luet_pkg.DefaultPackage{},
+			[]*luet_pkg.DefaultPackage{})
+		dep.Category = SanitizeCategory(rconflict.Category, rconflict.Slot)
+
+		// Check if it's present the build dep on the tree
+		p, _ := pc.ReciperRuntime.GetDatabase().FindPackage(dep)
+		if p == nil {
+			fmt.Println(fmt.Sprintf(
+				"[%s] Runtime package dep in conflict %s not in tree. I ignore it.",
+				pkg))
+			continue
+		}
+
+		gp := gentoo.GentooPackage{
+			Name:     p.GetName(),
+			Category: p.GetCategory(),
+			Version:  ">=0",
+			Slot:     "0",
+		}
+		rconflicts = pc.AppendIfNotPresent(rconflicts, gp)
+	}
+	solution.RuntimeConflicts = rconflicts
 
 	solution.PackageDir = pkgDir
 

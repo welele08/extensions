@@ -156,10 +156,6 @@ func runQdepends(solution *PortageSolution, runtime bool) error {
 
 			dep = strings.Trim(dep, "\n")
 			dep = strings.Trim(dep, "\r")
-			// Ignore ! / conflict for now ... not well supported by pkgs-checker now.
-			if strings.Index(dep, "!") >= 0 {
-				continue
-			}
 
 			if strings.Index(dep, ":") > 0 {
 
@@ -172,13 +168,6 @@ func runQdepends(solution *PortageSolution, runtime bool) error {
 				dep = depWithoutSlot + ":" + slot
 			}
 
-			// Ignoring use flags for now
-			// >=dev-python/setuptools-42.0.2[python_targets_python3_7(+),-python_single_target_python3_6(+),-python_single_target_python3_7(+),-python_single_target_python3_8(+)]
-			// it's not supported by pkgs-checker
-			if strings.Index(dep, "[") > 0 {
-				dep = dep[0:strings.Index(dep, "[")]
-			}
-
 			gp, err := gentoo.ParsePackageStr(dep)
 			if err != nil {
 				return errors.New("On convert dep " + dep + ": " + err.Error())
@@ -189,9 +178,17 @@ func runQdepends(solution *PortageSolution, runtime bool) error {
 				gp.GetPackageName()))
 			SanitizeSlot(gp)
 			if runtime {
-				solution.RuntimeDeps = append(solution.RuntimeDeps, *gp)
+				if gp.Condition == gentoo.PkgCondNot {
+					solution.RuntimeConflicts = append(solution.RuntimeConflicts, *gp)
+				} else {
+					solution.RuntimeDeps = append(solution.RuntimeDeps, *gp)
+				}
 			} else {
-				solution.BuildDeps = append(solution.BuildDeps, *gp)
+				if gp.Condition == gentoo.PkgCondNot {
+					solution.BuildConflicts = append(solution.BuildConflicts, *gp)
+				} else {
+					solution.BuildDeps = append(solution.BuildDeps, *gp)
+				}
 			}
 		}
 
@@ -209,8 +206,10 @@ func runQdepends(solution *PortageSolution, runtime bool) error {
 
 func (r *QDependsResolver) Resolve(pkg string) (*PortageSolution, error) {
 	ans := &PortageSolution{
-		BuildDeps:   make([]gentoo.GentooPackage, 0),
-		RuntimeDeps: make([]gentoo.GentooPackage, 0),
+		BuildDeps:        make([]gentoo.GentooPackage, 0),
+		RuntimeDeps:      make([]gentoo.GentooPackage, 0),
+		BuildConflicts:   make([]gentoo.GentooPackage, 0),
+		RuntimeConflicts: make([]gentoo.GentooPackage, 0),
 	}
 
 	gp, err := gentoo.ParsePackageStr(pkg)

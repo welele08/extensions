@@ -50,10 +50,12 @@ type PortageResolver interface {
 }
 
 type PortageSolution struct {
-	Package     gentoo.GentooPackage   `json:"package"`
-	PackageDir  string                 `json:"package_dir"`
-	BuildDeps   []gentoo.GentooPackage `json:"build-deps,omitempty"`
-	RuntimeDeps []gentoo.GentooPackage `json:"runtime-deps,omitempty"`
+	Package          gentoo.GentooPackage   `json:"package"`
+	PackageDir       string                 `json:"package_dir"`
+	BuildDeps        []gentoo.GentooPackage `json:"build-deps,omitempty"`
+	RuntimeDeps      []gentoo.GentooPackage `json:"runtime-deps,omitempty"`
+	RuntimeConflicts []gentoo.GentooPackage `json:"runtime-conflicts,omitempty"`
+	BuildConflicts   []gentoo.GentooPackage `json:"build-conflicts,omitempty"`
 }
 
 func SanitizeCategory(cat string, slot string) string {
@@ -113,6 +115,50 @@ func (s *PortageSolution) ToPack(runtime bool) *luet_pkg.DefaultPackage {
 		}
 
 		ans.PackageRequires = append(ans.PackageRequires, dep)
+	}
+
+	if runtime && len(s.RuntimeConflicts) > 0 {
+
+		for _, req := range s.RuntimeConflicts {
+
+			dep := &luet_pkg.DefaultPackage{
+				Name:     req.Name,
+				Category: SanitizeCategory(req.Category, req.Slot),
+				UseFlags: req.UseFlags,
+			}
+			if req.Version != "" && req.Condition == gentoo.PkgCondNot {
+				// TODO: to complete
+				dep.Version = fmt.Sprintf("%s%s%s",
+					req.Condition.String(), req.Version, req.VersionSuffix)
+
+			} else {
+				dep.Version = ">=0"
+			}
+
+			ans.PackageConflicts = append(ans.PackageConflicts, dep)
+		}
+
+	} else if !runtime && len(s.BuildConflicts) > 0 {
+
+		for _, req := range s.BuildConflicts {
+
+			dep := &luet_pkg.DefaultPackage{
+				Name:     req.Name,
+				Category: SanitizeCategory(req.Category, req.Slot),
+				UseFlags: req.UseFlags,
+			}
+			if req.Version != "" && req.Condition == gentoo.PkgCondNot {
+				// TODO: to complete
+				dep.Version = fmt.Sprintf("%s%s%s",
+					req.Condition.String(), req.Version, req.VersionSuffix)
+
+			} else {
+				dep.Version = ">=0"
+			}
+
+			ans.PackageConflicts = append(ans.PackageConflicts, dep)
+		}
+
 	}
 
 	return ans
