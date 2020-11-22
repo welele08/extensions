@@ -26,7 +26,6 @@ import (
 
 	gentoo "github.com/Sabayon/pkgs-checker/pkg/gentoo"
 	luet_config "github.com/mudler/luet/pkg/config"
-	luet_helpers "github.com/mudler/luet/pkg/helpers"
 	luet_pkg "github.com/mudler/luet/pkg/package"
 	luet_tree "github.com/mudler/luet/pkg/tree"
 )
@@ -186,8 +185,16 @@ func (pc *PortageConverter) createSolution(pkg, treePath string, stack []string)
 			solution.Package.Category, slot, solution.Package.Name)
 	}
 
-	// Check if specs is already present
-	if luet_helpers.Exists(filepath.Join(pkgDir, "definition.yaml")) && !pc.Override {
+	// Check if specs is already present. I don't check definition.yaml
+	// because with collection packages could be inside collection file.
+	pTarget := luet_pkg.NewPackage(solution.Package.Name, ">=0",
+		[]*luet_pkg.DefaultPackage{},
+		[]*luet_pkg.DefaultPackage{})
+	pTarget.Category = SanitizeCategory(solution.Package.Category, solution.Package.Slot)
+
+	p, _ := pc.ReciperRuntime.GetDatabase().FindPackage(pTarget)
+	// TODO: at the moment we ignore version. Do We want to handle this with Marvin?
+	if p != nil && !pc.Override {
 		// Nothing to do
 		fmt.Println(fmt.Sprintf("Package %s already in tree.", pkg))
 		return nil
