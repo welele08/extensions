@@ -29,7 +29,7 @@ yq w -i $pkgname/build.yaml "env[0]" 'CFLAGS="-g -O2 -I/include -I/usr/include -
 yq w -i $pkgname/build.yaml "env[1]" 'CPPFLAGS="-I/include -I/usr/include -I/usr/include/X11 -static"'
 
 # Generate steps
-yq w -i $pkgname/build.yaml "prelude[0]" "luet install libs/zlib shells/bash utils/autoconf utils/curl libs/zlib vcs/git development/automake development/pkg-config development/m4 lang/python \
+yq w -i $pkgname/build.yaml "prelude[0]" "luet install -y libs/zlib shells/bash utils/autoconf utils/curl libs/zlib vcs/git development/automake development/pkg-config development/m4 lang/python \
    development/make system/musl-toolchain"
 
 strip_source=$( echo $source | sed -E 's,\\t|\\r|\\n,,g')

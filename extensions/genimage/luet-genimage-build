@@ -53,7 +53,7 @@ sudo mount --bind /sys sys/
 sudo mount --bind /proc proc/
 sudo mount --bind /dev/pts dev/pts
 
-sudo chroot . /luet install $LUET_PACKAGES
+sudo chroot . /luet install -y $LUET_PACKAGES
 
 # Cleanup/umount
 sudo rm -rf luet

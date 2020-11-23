@@ -85,11 +85,11 @@ luet_install() {
   if [ "${LUET_REPOS}" != "" ] ; then
     # Install repositories packages before install
     # needed packages
-    ${SUDO} chroot . /luet install ${LUET_REPOS}
+    ${SUDO} chroot . /luet install -y ${LUET_REPOS}
   fi
 
   ${SUDO} chroot . /luet config
-  ${SUDO} chroot . /luet install ${packages}
+  ${SUDO} chroot . /luet install -y ${packages}
   ${SUDO} chroot . /luet cleanup
 
   # Cleanup/umount
