@@ -58,6 +58,7 @@ extract_pkg_files () {
   fi
 
   mkdir -p ${LUET_PORTAGE_TMPDIR} || true
+  mkdir -p ${LUET_PORTAGE_TARGETDIR} || true
   qtbz2 -d ${LUET_PORTAGE_TMPDIR} ${LUET_PORTAGE_CACHE_PACKAGES}/${cat}/${name}-${version}${vsuffix}.tbz2 || return 1
 
   ls -l ${LUET_PORTAGE_TMPDIR}
