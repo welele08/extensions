@@ -79,8 +79,7 @@ echo "" | SUDO=" " abuild-keygen -a -i
 
 mkdir -p /var/cache/distfiles
 APK="" abuild -rFdK
-APK="" abuild -rFdK package
-cp -rfv pkg/* /
+cp -rfv pkg/$PACKAGE_NAME/* /
 EOF
 
 touch $packagedir/build.yaml || true
