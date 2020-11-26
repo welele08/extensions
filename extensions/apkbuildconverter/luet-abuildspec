@@ -1,0 +1,137 @@
+#!/bin/bash
+set -e
+
+
+_help () {
+echo "Copyright (c) 2020 Luet Extensions
+
+luet abuildspec [opts]
+
+Converts a local aports to a Luet tree
+
+Example:
+
+  $> luet abuildspec /aports/path newcategory
+
+"
+return 0
+}
+
+if [ $# -eq 0 ] || [ "$1" == "--help" ] || [ "$1" == "-h" ] || [ "$1" == "help" ]; then
+    _help
+    exit 1
+fi
+
+DIR=$1
+
+CATEGORY=${2:-alpine}
+
+BASE_LAYER_CATEGORY="${BASE_LAYER_CATEGORY:-development}"
+BASE_LAYER_NAME="${BASE_LAYER_NAME:-toolchain}"
+
+
+
+convertapk() {
+
+local APKBUILD=$1
+
+makedepends=
+pkgname=
+pkgver=
+pkgdesc=
+url=
+license=
+depends=
+
+. "$APKBUILD"
+
+packagedir=$(dirname $APKBUILD)
+name=$(basename $packagedir)
+#pkgname=$name
+touch $packagedir/definition.yaml || true
+
+# Add 1 to a collection
+yq w -i $packagedir/definition.yaml "name" "$pkgname" 
+yq w -i $packagedir/definition.yaml "version" "$pkgver" --style double
+yq w -i $packagedir/definition.yaml "category" "$CATEGORY"
+yq w -i $packagedir/definition.yaml "description" "$pkgdesc"
+yq w -i $packagedir/definition.yaml "uri[0]" "$url"
+yq w -i $packagedir/definition.yaml "license" "$license"
+
+readarray -t s <<<"$source"
+
+yq w -i $packagedir/definition.yaml "labels.\"package.source\"" "${s[0]}" --style double
+cat << EOF > $packagedir/build.sh
+#!/bin/sh
+set -e
+export CBUILD=$MUSL_TARGET
+export LUET_YES=true
+luet install libs/libressl development/abuild vcs/git development/make
+echo "#!/bin/sh" > /usr/bin/apk
+echo "exit 0" >> /usr/bin/apk
+echo "#!/bin/sh" > /usr/bin/abuild-sign
+echo "touch \$2" >> /usr/bin/abuild-sign
+echo "exit 0" >> /usr/bin/abuild-sign
+chmod +x /usr/bin/apk
+echo "" | SUDO=" " abuild-keygen -a -i
+
+mkdir -p /var/cache/distfiles
+APK="" abuild -rFd
+APK="" abuild -rFd package
+cp -rfv pkg/* /
+EOF
+
+touch $packagedir/build.yaml || true
+
+# yq w -i $pkgname/build.yaml "image" "quay.io/mocaccino/micro-toolchain:latest"
+# yq w -i $pkgname/build.yaml "env[0]" 'CFLAGS="-g -O2 -I/include -I/usr/include -I/usr/include/X11 -static"'
+# yq w -i $pkgname/build.yaml "env[1]" 'CPPFLAGS="-I/include -I/usr/include -I/usr/include/X11 -static"'
+# yq w -i $pkgname/build.yaml "env[2]" 'LUET_YES="true"'
+
+# # Generate steps
+# yq w -i $pkgname/build.yaml "prelude[0]" "luet install libs/zlib shells/bash utils/autoconf utils/curl libs/zlib vcs/git development/automake development/pkg-config development/m4 lang/python \
+#    development/make system/musl-toolchain"
+yq w -i $packagedir/build.yaml "package_dir" "/luetbuild/pkg/{{.Values.name}}"
+yq w -i $packagedir/build.yaml "steps[0]" "sh build.sh"
+
+# Generate depends
+u=0
+for i in $makedepends; do
+i="${i/-dev/}"    
+  if [ "$i" == "" ] || [ "$i" == "$pkgname" ]  ; then
+         continue
+    fi
+    
+    yq w -i $packagedir/build.yaml "requires[$u].category" "$CATEGORY"
+    yq w -i $packagedir/build.yaml "requires[$u].name" "$i"
+    yq w -i $packagedir/build.yaml "requires[$u].version" ">=0"
+    u=$((u+1))
+done
+
+
+    yq w -i $packagedir/build.yaml "requires[$u].category" "$BASE_LAYER_CATEGORY"
+    yq w -i $packagedir/build.yaml "requires[$u].name" "$BASE_LAYER_NAME"
+    yq w -i $packagedir/build.yaml "requires[$u].version" ">=0"
+
+u=0
+for i in $depends; do
+i="${i/-dev/}"    
+    if [ "$i" == "" ] || [ "$i" == "$pkgname" ]; then
+         continue
+    fi
+    yq w -i $packagedir/definition.yaml "requires[$u].category" "$CATEGORY"
+    yq w -i $packagedir/definition.yaml "requires[$u].name" "$i"
+    yq w -i $packagedir/definition.yaml "requires[$u].version" ">=0"
+    u=$((u+1))
+done
+
+}
+
+
+for i in $(find $DIR -type d -maxdepth 2)
+do     
+    if [ -e "$i"/APKBUILD ]; then
+    echo "Converting $i"
+    convertapk "$i"/APKBUILD
+    fi
+done
