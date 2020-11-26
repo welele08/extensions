@@ -18,7 +18,9 @@ yq w -i $pkgname/definition.yaml "description" "$pkgdesc"
 yq w -i $pkgname/definition.yaml "uri[0]" "$url"
 yq w -i $pkgname/definition.yaml "license" "$license"
 
-yq w -i $pkgname/definition.yaml "labels.\"package.source\"" $source
+readarray -t s <<<"$source"
+
+yq w -i $pkgname/definition.yaml "labels.\"package.source\"" ${s[0]}
 echo "$b" > $pkgname/build.sh
 
 
@@ -27,12 +29,13 @@ touch $pkgname/build.yaml || true
 yq w -i $pkgname/build.yaml "image" "quay.io/mocaccino/micro-toolchain:latest"
 yq w -i $pkgname/build.yaml "env[0]" 'CFLAGS="-g -O2 -I/include -I/usr/include -I/usr/include/X11 -static"'
 yq w -i $pkgname/build.yaml "env[1]" 'CPPFLAGS="-I/include -I/usr/include -I/usr/include/X11 -static"'
+yq w -i $pkgname/build.yaml "env[2]" 'LUET_YES="true"'
 
 # Generate steps
-yq w -i $pkgname/build.yaml "prelude[0]" "luet install -y libs/zlib shells/bash utils/autoconf utils/curl libs/zlib vcs/git development/automake development/pkg-config development/m4 lang/python \
+yq w -i $pkgname/build.yaml "prelude[0]" "luet install libs/zlib shells/bash utils/autoconf utils/curl libs/zlib vcs/git development/automake development/pkg-config development/m4 lang/python \
    development/make system/musl-toolchain"
 
-strip_source=$( echo $source | sed -E 's,\\t|\\r|\\n,,g')
+strip_source=$( echo ${s[0]} | sed -E 's,\\t|\\r|\\n,,g')
 yq w -i $pkgname/build.yaml "prelude[1]" "mkdir -p source && curl -L $strip_source | tar xJvf - -C source"
 
 next=2
@@ -43,15 +46,22 @@ fi
 
 export pkgdir=/package
 yq w -i $pkgname/build.yaml "prelude[$next]" "export \$pkgdir=/package"
+    next=$((next+1))
 
+if [ -n "$builddir" ]; then
+yq w -i $pkgname/build.yaml "prelude[$next]" "export \$srcdir=/$builddir"
+else 
+yq w -i $pkgname/build.yaml "prelude[$next]" "export \$srcdir=/luetbuild/source"
+fi
 if [ -n "$pkgdir" ]; then
     next=$((next+1))
 
     yq w -i $pkgname/build.yaml "prelude[$next]" "mkdir -p $pkgdir"
     yq w -i $pkgname/build.yaml "package_dir" "$pkgdir"
 fi
+    next=$((next+1))
 
-yq w -i $pkgname/build.yaml "prelude[2]" "/bin/bash -cx \"source build.sh && cd source && build\""
+yq w -i $pkgname/build.yaml "prelude[$next]" "/bin/bash -cx \"source build.sh && cd source && build\""
 yq w -i $pkgname/build.yaml "steps[0]" "/bin/bash -ce \"source build.sh && cd source && package\""
 
 # Generate depends
