@@ -63,7 +63,8 @@ create_sub_package() {
     yq w -i $package_dir/definition.yaml "license" "$license"
 
     cat << 'EOF' > $package_dir/build.sh
-cp -rf pkg/$PACKAGE_NAME/* /
+#!/bin/bash
+cp -rf pkg/$PACKAGE_NAME/* / || true
 EOF
     yq w -i $package_dir/build.yaml "requires[0].category" "$CATEGORY"
     yq w -i $package_dir/build.yaml "requires[0].name" "$PARENT"
@@ -121,7 +122,8 @@ echo "" | SUDO=" " abuild-keygen -a -i
 export ABUILD_BOOTSTRAP=true # Disable package checks. other wise add !check to each single package options
 mkdir -p /var/cache/distfiles
 APK="" abuild -rFdK
-cp -rf pkg/$PACKAGE_NAME/* /
+cp -rf pkg/$PACKAGE_NAME/* / || true
+
 EOF
 
 touch $packagedir/build.yaml || true
