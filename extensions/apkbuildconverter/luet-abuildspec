@@ -1,7 +1,6 @@
 #!/bin/bash
 set -e
 
-
 _help () {
 echo "Copyright (c) 2020 Luet Extensions
 
@@ -29,7 +28,49 @@ CATEGORY=${2:-alpine}
 BASE_LAYER_CATEGORY="${BASE_LAYER_CATEGORY:-development}"
 BASE_LAYER_NAME="${BASE_LAYER_NAME:-toolchain}"
 
+create_sub_package() {
+    local NAME=${1%%:*}   
+    
+    local PARENT=$2
+    local TREE=$3
 
+    local APKBUILD=$4
+
+    echo "Creating sub package $NAME from $PARENT"
+
+    makedepends=
+    pkgname=
+    pkgver=
+    pkgdesc=
+    url=
+    license=
+    depends=
+    subpackages=
+
+    . "$APKBUILD"
+
+    package_dir=$TREE/$NAME
+    mkdir -p $package_dir || true
+    touch $package_dir/definition.yaml || true
+    touch $package_dir/build.yaml || true
+
+    # Add 1 to a collection
+    yq w -i $package_dir/definition.yaml "name" "$NAME" 
+    yq w -i $package_dir/definition.yaml "version" "$pkgver" --style double
+    yq w -i $package_dir/definition.yaml "category" "$CATEGORY"
+    yq w -i $package_dir/definition.yaml "description" "$pkgdesc"
+    yq w -i $package_dir/definition.yaml "uri[0]" "$url"
+    yq w -i $package_dir/definition.yaml "license" "$license"
+
+    cat << 'EOF' > $package_dir/build.sh
+cp -rf pkg/$PACKAGE_NAME/* /
+EOF
+    yq w -i $package_dir/build.yaml "requires[0].category" "$CATEGORY"
+    yq w -i $package_dir/build.yaml "requires[0].name" "$PARENT"
+    yq w -i $package_dir/build.yaml "requires[0].version" ">=0"
+    yq w -i $package_dir/build.yaml "package_dir" "/luetbuild/pkg/{{.Values.name}}"
+    yq w -i $package_dir/build.yaml "steps[0]" "sh build.sh"
+}
 
 convertapk() {
 
@@ -42,6 +83,7 @@ pkgdesc=
 url=
 license=
 depends=
+subpackages=
 
 . "$APKBUILD"
 
@@ -76,10 +118,10 @@ chmod +x /usr/bin/apk
 chmod +x /usr/bin/abuild-sign
 
 echo "" | SUDO=" " abuild-keygen -a -i
-
+export ABUILD_BOOTSTRAP=true # Disable package checks. other wise add !check to each single package options
 mkdir -p /var/cache/distfiles
 APK="" abuild -rFdK
-cp -rfv pkg/$PACKAGE_NAME/* /
+cp -rf pkg/$PACKAGE_NAME/* /
 EOF
 
 touch $packagedir/build.yaml || true
@@ -98,7 +140,9 @@ yq w -i $packagedir/build.yaml "steps[0]" "sh build.sh"
 # Generate depends
 u=0
 for i in $makedepends; do
-i="${i/-dev/}"    
+#i="${i/-dev/}"  
+    i=${i%%:*} 
+
   if [ "$i" == "" ] || [ "$i" == "$pkgname" ]  ; then
          continue
     fi
@@ -116,14 +160,21 @@ done
 
 u=0
 for i in $depends; do
-i="${i/-dev/}"    
+    if [ "$i" == "-dev" ]  || [ "$i" == "" ] || [ "$i" == "$pkgname" ]; then
+         continue
+    fi
+    i=${i%%:*} 
+    yq w -i $packagedir/definition.yaml "requires[$u].category" "$CATEGORY"
+    yq w -i $packagedir/definition.yaml "requires[$u].name" "${i}" --style double
+    yq w -i $packagedir/definition.yaml "requires[$u].version" ">=0"
+    u=$((u+1))
+done
+
+for i in $subpackages; do
     if [ "$i" == "" ] || [ "$i" == "$pkgname" ]; then
          continue
     fi
-    yq w -i $packagedir/definition.yaml "requires[$u].category" "$CATEGORY"
-    yq w -i $packagedir/definition.yaml "requires[$u].name" "$i"
-    yq w -i $packagedir/definition.yaml "requires[$u].version" ">=0"
-    u=$((u+1))
+    create_sub_package "$i" "$pkgname" "$packagedir" "$APKBUILD"
 done
 
 }
