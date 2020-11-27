@@ -107,6 +107,10 @@ yq w -i $packagedir/definition.yaml "labels.\"package.source\"" "${s[0]}" --styl
 cat << 'EOF' > $packagedir/build.sh
 #!/bin/sh
 set -e
+
+if [ -e "/build/env" ]; then
+    source /build/env
+fi
 # export CBUILD=$MUSL_TARGET
 # export LUET_YES=true
 # luet install libs/libressl development/abuild vcs/git development/make
