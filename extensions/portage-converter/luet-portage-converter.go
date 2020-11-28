@@ -75,8 +75,11 @@ func SanitizeCategory(cat string, slot string) string {
 
 func (s *PortageSolution) ToPack(runtime bool) *luet_pkg.DefaultPackage {
 
+	version := s.Package.Version
 	// TODO: handle particular use cases
-	version := fmt.Sprintf("%s%s", s.Package.Version, s.Package.VersionSuffix)
+	if strings.HasPrefix(s.Package.VersionSuffix, "_pre") {
+		version = version + s.Package.VersionSuffix
+	}
 
 	emergePackage := s.Package.GetPackageName()
 	if s.Package.Slot != "0" {
