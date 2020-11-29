@@ -68,6 +68,7 @@ for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
     PACKAGE_NAME=$(echo "$i" | jq -r ".name")
     PACKAGE_CATEGORY=$(echo "$i" | jq -r ".category")
     PACKAGE_VERSION=$(echo "$i" | jq -r ".version")
+    LATEST_TAG=
     DEFINITION_FILE="$PACKAGE_PATH/definition.yaml"
     YQ_ARGS=
 
@@ -148,9 +149,9 @@ for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
 
     SNAPSHOT_PREFIX=${AUTOBUMP_REFIX:-0.}
 
-    if [[ "$AUTOBUMP_STRATEGY" == "release" ]]; then
+    if [[ "$AUTOBUMP_STRATEGY" == "release" ]] && [ -n "${GITHUB_OWNER}" ] && [ -n "${GITHUB_REPO}" ]; then
         LATEST_TAG=$(curl -H "Authorization: token $TOKEN" https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest -s | jq .tag_name -r)
-    elif [[ "$AUTOBUMP_STRATEGY" == "refs" ]]; then
+    elif [[ "$AUTOBUMP_STRATEGY" == "refs" ]] &&  [ -n "${GITHUB_OWNER}" ] && [ -n "${GITHUB_REPO}" ]; then
         LATEST_TAG=$(curl -H "Authorization: token $TOKEN" https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/git/refs/tags -s | jq '.[].ref | sub("refs\/tags\/"; "") | select(. | test("'$VERSION_CONTAINS'"))' -r | tail -n1 )
     elif [[ "$AUTOBUMP_STRATEGY" == "snapshot" ]] || [[ "$AUTOBUMP_STRATEGY" == "git_hash" ]]; then
         LATEST_TAG=${SNAPSHOT_PREFIX}$(date +%Y%m%d)
@@ -170,7 +171,7 @@ for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
         fi
     elif [ "${AUTOBUMP_STRATEGY}" == "sabayon" ]; then
         LATEST_TAG=$(latest_sabayon $ORIGINAL_PACKAGE_NAME $ORIGINAL_PACKAGE_CATEGORY)
-    else
+    elif [ -n "${GITHUB_OWNER}" ] && [ -n "${GITHUB_REPO}" ]; then
         LATEST_TAG=$(curl -H "Authorization: token $TOKEN" https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/tags -s | jq -r '.[].name | select(. | test("'$VERSION_CONTAINS'"))' -r | head -1 )
     fi
 
@@ -241,7 +242,7 @@ for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
     
 
         if [[ "$AUTOBUMP_REVDEPS" == "true" ]]; then
-            for i in $(luet tree pkglist -b -t $PWD -m $PACKAGE_CATEGORY/$PACKAGE_NAME --revdeps); do
+            for i in $(luet tree pkglist -b -t $TREE_DIR -m $PACKAGE_CATEGORY/$PACKAGE_NAME --revdeps); do
 
                 if [ "${AUTO_GIT}" == "true" ]; then
                     git checkout $BRANCH_NAME # Return to bump branch
@@ -253,9 +254,9 @@ for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
 
                 deffile=$path/definition.yaml
                 if [ -e "$path/collection.yaml" ]; then
-                    index=$(yq r $PACKAGE_PATH/collection.yaml -j | jq ".packages | map(.name==\"${package[1]}\" and .category==\"${package[0]}\") | index(true)")
+                    index=$(yq r $path/collection.yaml -j | jq ".packages | map(.name==\"${package[1]}\" and .category==\"${package[0]}\") | index(true)")
                     YQ_ARGS="packages[$index]."
-                    deffile="$PACKAGE_PATH/collection.yaml"
+                    deffile="$path/collection.yaml"
                 fi
 
                 ver=$(yq r $deffile "${YQ_ARGS}version")
