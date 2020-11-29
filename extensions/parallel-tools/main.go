@@ -173,7 +173,7 @@ func main() {
 
 	//toCalculate, _ := luetCompiler.ComputeMinimumCompilableSet(compilerSpecs.All()...)
 
-	compilationOrder := map[string]int{}
+	//compilationOrder := map[string]int{}
 	compilationTree := map[string]map[string]interface{}{}
 
 	for _, sp := range compilerSpecs.All() {
@@ -192,15 +192,15 @@ func main() {
 			bt.Reset(fmt.Sprintf("%s/%s", p.Package.GetCategory(), p.Package.GetName()))
 
 			//	fmt.Println(ass.Package.HumanReadableString())
-			compilationOrder[fmt.Sprintf("%s/%s", p.Package.GetCategory(), p.Package.GetName())]++
+			//	compilationOrder[fmt.Sprintf("%s/%s", p.Package.GetCategory(), p.Package.GetName())]++
 
 			spec, err := luetCompiler.FromPackage(p.Package)
 			if err != nil {
-				log.Fatal("Error: " + err.Error())
+				log.Fatal(p.Package.HumanReadableString() + " Error: " + err.Error())
 			}
 			ass, err := luetCompiler.ComputeDepTree(spec)
 			if err != nil {
-				log.Fatal("Error: " + err.Error())
+				log.Fatal(p.Package.HumanReadableString() + " Error: " + err.Error())
 			}
 			for _, r := range ass {
 				if compilationTree[fmt.Sprintf("%s/%s", p.Package.GetCategory(), p.Package.GetName())] == nil {
