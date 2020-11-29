@@ -33,7 +33,7 @@ require (
 	github.com/mitchellh/reflectwalk v1.0.1 // indirect
 	github.com/moby/sys/mount v0.2.0 // indirect
 	github.com/mudler/go-pluggable v0.0.0-20201116172209-579f8c6210e1 // indirect
-	github.com/mudler/luet v0.0.0-20201129122118-817a198a89d9
+	github.com/mudler/luet v0.0.0-20201129125658-75dbc2dcb4bf
 	github.com/openSUSE/umoci v0.4.5 // indirect
 	github.com/pelletier/go-toml v1.8.1 // indirect
 	github.com/prometheus/procfs v0.1.3 // indirect

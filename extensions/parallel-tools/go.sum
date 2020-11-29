@@ -731,8 +731,8 @@ github.com/mudler/docker-companion v0.4.6-0.20200418093252-41846f112d87/go.mod h
 github.com/mudler/go-pluggable v0.0.0-20201113184918-d36448fc8f82/go.mod h1:4P/ULate+2QxoAQtojaRjyO5VGMhV0KLnSdAS8nuBbo=
 github.com/mudler/go-pluggable v0.0.0-20201116172209-579f8c6210e1 h1:m0a0EhwshFL/RHZB6wu4YD249iv8oZTwKmrWhxamNF4=
 github.com/mudler/go-pluggable v0.0.0-20201116172209-579f8c6210e1/go.mod h1:4P/ULate+2QxoAQtojaRjyO5VGMhV0KLnSdAS8nuBbo=
-github.com/mudler/luet v0.0.0-20201129122118-817a198a89d9 h1:0kgTD60H9hf2hEnSYdWts9qhFiRrxZL49RmEXJdLbNo=
-github.com/mudler/luet v0.0.0-20201129122118-817a198a89d9/go.mod h1:pDekkrKiWTWpzckG+L8S9DGCKSXtN86/Ezy7T/1ARcg=
+github.com/mudler/luet v0.0.0-20201129125658-75dbc2dcb4bf h1:6JUvSIMUaAhvQ50qxopBRpAP8Op4tPxbccw3jZ+APR8=
+github.com/mudler/luet v0.0.0-20201129125658-75dbc2dcb4bf/go.mod h1:pDekkrKiWTWpzckG+L8S9DGCKSXtN86/Ezy7T/1ARcg=
 github.com/mudler/topsort v0.0.0-20201103161459-db5c7901c290 h1:426hFyXMpXeqIeGJn2cGAW9ogvM2Jf+Jv23gtVPvBLM=
 github.com/mudler/topsort v0.0.0-20201103161459-db5c7901c290/go.mod h1:uP5BBgFxq2wNWo7n1vnY5SSbgL0WDshVJrOO12tZ/lA=
 github.com/munnerz/goautoneg v0.0.0-20120707110453-a547fc61f48d/go.mod h1:+n7T8mK8HuQTcFwEeznm/DIxMOiR9yIdICNftLE1DvQ=
