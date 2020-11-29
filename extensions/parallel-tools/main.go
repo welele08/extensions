@@ -165,7 +165,8 @@ func main() {
 
 		spec, err := luetCompiler.FromPackage(pack)
 		if err != nil {
-			log.Fatal("Error: " + err.Error())
+			log.Println(pack)
+			log.Fatal(pack.HumanReadableString() + " error: " + err.Error())
 		}
 		compilerSpecs.Add(spec)
 	}
