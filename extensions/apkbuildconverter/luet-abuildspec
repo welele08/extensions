@@ -46,6 +46,7 @@ create_sub_package() {
     license=
     depends=
     subpackages=
+    provides=
 
     . "$APKBUILD"
 
@@ -61,6 +62,27 @@ create_sub_package() {
     yq w -i $package_dir/definition.yaml "description" "$pkgdesc"
     yq w -i $package_dir/definition.yaml "uri[0]" "$url"
     yq w -i $package_dir/definition.yaml "license" "$license"
+
+u=0
+for i in $provides; do
+    if [ "$i" == "-dev" ]  || [ "$i" == "" ] || [ "$i" == "$pkgname" ]; then
+         continue
+    fi
+    i=${i%%:*} 
+    i=${i%%[<>=]*}
+
+        local cp=${i#\!}
+		if [ $cp != $i ]; then
+        continue
+        fi;
+
+
+    yq w -i $package_dir/definition.yaml "provides[$u].category" "$CATEGORY"
+    yq w -i $package_dir/definition.yaml "provides[$u].name" "${i}${NAME/${i}${PARENT/$i/}/}" --style double
+    yq w -i $package_dir/definition.yaml "provides[$u].version" ">=0"
+        u=$((u+1))
+
+done
 
     cat << 'EOF' > $package_dir/build.sh
 #!/bin/bash
@@ -85,6 +107,7 @@ url=
 license=
 depends=
 subpackages=
+provides=
 
 . "$APKBUILD"
 
@@ -148,11 +171,14 @@ u=0
 for i in $makedepends; do
 #i="${i/-dev/}"  
     i=${i%%:*} 
-
+i=${i%%[<>=]*}
   if [ "$i" == "" ] || [ "$i" == "$pkgname" ]  ; then
          continue
     fi
-    
+       local cp=${i#\!}
+		if [ $cp != $i ]; then
+        continue
+        fi;
     yq w -i $packagedir/build.yaml "requires[$u].category" "$CATEGORY"
     yq w -i $packagedir/build.yaml "requires[$u].name" "$i"
     yq w -i $packagedir/build.yaml "requires[$u].version" ">=0"
@@ -170,16 +196,53 @@ for i in $depends; do
          continue
     fi
     i=${i%%:*} 
+    i=${i%%[<>=]*}
+
+        local cp=${i#\!}
+		if [ $cp != $i ]; then
+        continue
+        fi;
+
     yq w -i $packagedir/definition.yaml "requires[$u].category" "$CATEGORY"
     yq w -i $packagedir/definition.yaml "requires[$u].name" "${i}" --style double
     yq w -i $packagedir/definition.yaml "requires[$u].version" ">=0"
     u=$((u+1))
 done
 
-for i in $subpackages; do
-    if [ "$i" == "" ] || [ "$i" == "$pkgname" ]; then
+## PRovides start
+u=0
+for i in $provides; do
+    if [ "$i" == "-dev" ]  || [ "$i" == "" ] || [ "$i" == "$pkgname" ]; then
          continue
     fi
+    i=${i%%:*} 
+    i=${i%%[<>=]*}
+
+        local cp=${i#\!}
+		if [ $cp != $i ]; then
+        continue
+        fi;
+
+    yq w -i $packagedir/definition.yaml "provides[$u].category" "$CATEGORY"
+    yq w -i $packagedir/definition.yaml "provides[$u].name" "${i}" --style double
+    yq w -i $packagedir/definition.yaml "provides[$u].version" ">=0"
+    u=$((u+1))
+done
+## Provides END
+
+for i in $subpackages; do
+  
+
+        if [ "$i" == "-dev" ]  || [ "$i" == "" ] || [ "$i" == "$pkgname" ]; then
+         continue
+    fi
+    i=${i%%:*} 
+    i=${i%%[<>=]*}
+
+        local cp=${i#\!}
+		if [ $cp != $i ]; then
+        continue
+        fi;
     create_sub_package "$i" "$pkgname" "$packagedir" "$APKBUILD"
 done
 
