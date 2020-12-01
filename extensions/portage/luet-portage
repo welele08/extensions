@@ -115,7 +115,7 @@ get_pkg_version () {
     slot="0"
   fi
 
-  local npkgs=$(qlist -ICvS ${cat}/${name} | wc -l)
+  local npkgs=$(qlist -ICveS ${cat}/${name} | wc -l)
   if [ $npkgs -eq 0 ] ; then
     echo "No installed package found with name ${pv}!"
     return 1
@@ -124,13 +124,13 @@ get_pkg_version () {
   if [ $npkgs -gt 1 ] ; then
 
     # Ensure that i get the right package with right slot.
-    npkgs=$(qlist -ICvS ${cat}/${name}:${slot} | wc -l)
+    npkgs=$(qlist -ICveS ${cat}/${name}:${slot} | wc -l)
     if [ $npkgs -eq 0 ] ; then
       echo "No installed package found with name ${pv} and slot ${slot}!"
       return 1
     fi
 
-    pv=$(qlist -ICvS ${cat}/${name}:${slot})
+    pv=$(qlist -ICevS ${cat}/${name}:${slot})
 
   else
 
@@ -143,7 +143,7 @@ get_pkg_version () {
       fi
     fi
 
-    pv=$(qlist -ICvS ${cat}/${name})
+    pv=$(qlist -ICevS ${cat}/${name})
 
   fi
 
