@@ -226,6 +226,19 @@ for i in $provides; do
     yq w -i $packagedir/definition.yaml "provides[$u].category" "$CATEGORY"
     yq w -i $packagedir/definition.yaml "provides[$u].name" "${i}" --style double
     yq w -i $packagedir/definition.yaml "provides[$u].version" ">=0"
+    echo "Writing provide and creating build package"
+
+    mkdir $packagedir/"${i}"  || true
+    touch $packagedir/"${i}"/build.yaml || true
+    touch $packagedir/"${i}"/definition.yaml  || true
+
+    yq w -i $packagedir/"${i}"/definition.yaml "name" "$i" 
+yq w -i $packagedir/"${i}"/definition.yaml "version" "0" --style double
+yq w -i $packagedir/"${i}"/definition.yaml "category" "$CATEGORY"
+
+    yq w -i $packagedir/"${i}"/build.yaml "requires[0].name" "$pkgname" 
+yq w -i $packagedir/"${i}"/build.yaml "requires[0].version" ">=0" --style double
+yq w -i $packagedir/"${i}"/build.yaml "requires[0].category" "$CATEGORY"
     u=$((u+1))
 done
 ## Provides END
