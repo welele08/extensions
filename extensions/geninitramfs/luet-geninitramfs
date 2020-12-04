@@ -1,0 +1,82 @@
+#!/bin/bash
+export tmpdir="$(mktemp -d)"
+INITRAMFS="${INITRAMFS:-$PWD/initramfs.cpio.xz}"
+LUET_BIN="${LUET_BIN:-$(which luet)}"
+
+luet_install() {
+
+  local rootfs=$1
+  local packages="$2"
+
+  ## Initial rootfs
+  pushd "$rootfs"
+
+      cat <<EOF > $tmpdir/luet.yaml
+general:
+  debug: true
+system:
+  rootfs: $rootfs/
+  database_path: "/"
+  database_engine: "boltdb"
+config_from_host: true
+EOF
+
+  set -e
+  ${LUET_BIN} --config $tmpdir/luet.yaml config
+  ${LUET_BIN} --config $tmpdir/luet.yaml install -y ${packages}
+  ${LUET_BIN} --config $tmpdir/luet.yaml cleanup
+  rm -rf $rootfs/repos
+  rm -rf $rootfs/luet.db
+  rm -rf $rootfs/packages
+
+  popd
+}
+
+cleanup() {
+    rm -rf "$tmpdir"
+}
+
+trap cleanup 1 2 3 6 EXIT
+
+main () {
+
+
+    _help () {
+      echo "Copyright (c) 2020 Luet Extensions
+
+luet geninitramfs [opts]
+
+Generate an initramfs with the supplied luet packages. The packages have to be available in the repositories of the host system
+
+Example:
+
+  $> INITRAMFS=/path/to/initramfs luet geninitramfs package1 package2 package3
+"
+      return 0
+    }
+
+    if [ $# -eq 0 ] ; then
+      _help
+      exit 1
+    fi
+
+    if [ $1 == "help" ]; then
+      _help
+       exit 1
+    fi
+
+  mkdir $tmpdir/rootfs
+  luet_install $tmpdir/rootfs "$@"
+
+  pushd  $tmpdir/rootfs
+   find . | cpio -R root:root -H newc -o | ${XZ:-xz} -9 --check=none > $INITRAMFS
+  popd  
+
+  cleanup
+  echo "Initramfs generated at $INITRAMFS"
+  
+  return 0
+}
+
+main "$@"
+exit $?
