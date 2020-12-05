@@ -89,21 +89,25 @@ body {
 
 {{ if ne (len .Package.PackageRequires) 0 }}
 <h1> Requires </h1>
-{{range $_, $f  := .Package.PackageRequires}}
-<span class="tag">
- <a href="/find/{{$f.Category}}/{{$f.Name}}">  <span class="icon has-text-dark is-medium"> <i class="fas fa-box-open"></i></span>  {{$f.Name}} {{$f.Version}} </a>
- </a>
-</span>
-{{end}}
+<div class="container">
+  {{range $_, $f  := .Package.PackageRequires}}
+  <span class="tag">
+  <a href="/find/{{$f.Category}}/{{$f.Name}}">  <span class="icon has-text-dark is-medium"> <i class="fas fa-box-open"></i></span>  {{$f.Name}} {{$f.Version}} </a>
+  </a>
+  </span>
+  {{end}}
+</div>
 {{end}}
 
 {{ if ne (len .Package.PackageConflicts) 0 }}
 <h1> Conflicts </h1>
-{{range $_, $f  := .Package.PackageConflicts}}
-<span class="tag">
- <a href="/find/{{$f.Category}}/{{$f.Name}}">  <span class="icon has-text-dark is-medium"> <i class="fas fa-box-open"></i></span>  {{$f.Name}} {{$f.Version}} </a>
- </a>
-{{end}}
+<div class="container">
+  {{range $_, $f  := .Package.PackageConflicts}}
+  <span class="tag">
+  <a href="/find/{{$f.Category}}/{{$f.Name}}">  <span class="icon has-text-dark is-medium"> <i class="fas fa-box-open"></i></span>  {{$f.Name}} {{$f.Version}} </a>
+  </a>
+  {{end}}
+</div>
 {{end}}
 
 
@@ -111,41 +115,50 @@ body {
 
 {{ if ne (len .Package.Labels) 0 }}
 <h1> Labels </h1>
-{{range $key, $fa := .Package.Labels}}
-<span class="tag">
-<span class="icon has-text-dark is-medium"> <i class="fas fa-tag"></i></span> {{$key}}: {{$fa}}
-</span>
-{{end}}
+<div class="container">
+  {{range $key, $fa := .Package.Labels}}
+  <span class="tag">
+  <span class="icon has-text-dark is-medium"> <i class="fas fa-tag"></i></span> {{$key}}: {{$fa}}
+  </span>
+  {{end}}
+</div>
 {{end}}
 
 
 {{ if ne (len .Package.Annotations) 0 }}
 <h1> Annotations </h1>
-{{range $key, $fa := .Package.Annotations}}
-<span class="tag">
-<span class="icon has-text-dark is-medium"> <i class="fas fa-tag"></i></span> {{$key}}: {{$fa}}
-</span>
-{{end}}
+<div class="container">
+  {{range $key, $fa := .Package.Annotations}}
+  <span class="tag">
+  <span class="icon has-text-dark is-medium"> <i class="fas fa-tag"></i></span> {{$key}}: {{$fa}}
+  </span>
+  {{end}}
+</div>
 {{end}}
 
 
 {{ if ne (len .Package.Uri) 0 }}
 <h1> Links </h1>
-{{range $_, $f  := .Package.Uri}}
 
-<span class="tag">
- <a href="{{$f}}" target="_blank"> <span class="icon has-text-dark is-medium"> <i class="fas fa-link"></i></span> {{$f}} </a>
-</span>
-{{end}}
+<div class="container">
+  {{range $_, $f  := .Package.Uri}}
+    <span class="tag">
+    <a href="{{$f}}" target="_blank"> <span class="icon has-text-dark is-medium"> <i class="fas fa-link"></i></span> {{$f}} </a>
+    </span>
+  {{end}}
+</div>
+
 {{end}}
 
 {{ if ne (len .Package.Provides) 0 }}
 <h1> Provides </h1>
-{{range $_, $f  := .Package.Provides}}
-<span class="tag">
- <a href="/{{$reponame}}/{{$f.Category}}/{{$f.Name}}">  <span class="icon has-text-dark is-medium"> <i class="fas fa-box-open"></i></span>  {{$f.Name}} {{$f.Version}} </a>
- </a>
-{{end}}
+<div class="container">
+  {{range $_, $f  := .Package.Provides}}
+  <span class="tag">
+  <a href="/{{$reponame}}/{{$f.Category}}/{{$f.Name}}">  <span class="icon has-text-dark is-medium"> <i class="fas fa-box-open"></i></span>  {{$f.Name}} {{$f.Version}} </a>
+  </a></span>
+  {{end}}
+</div>
 {{ end }}
 
 {{if .Package.Hidden}}
@@ -172,27 +185,38 @@ Package is hidden
     Files
   </p>
   <div class="p-3 m-1">
-<table  data-toggle="table"
-  data-search="true"
-  data-show-columns="true"
+<table  
   id="table">
   <thead>
     <tr>
-      <th data-field="name">File Name</th>
+      <th >Name</th>
     </tr>
   </thead>
-   <tbody>
-    {{range $_, $f  := .Files}}
-    <tr>
-      <td> {{$f}}</td>  
-    </tr>
-    {{end}}
-  </tbody>
+
 </table>
 </div>
 
+
+
+
+
 <script type="text/javascript">
-    $("#table").DataTable();
+
+var data = [
+     {{range $_, $f  := .Files}}
+              [  "{{$f}}" ],
+            {{end}}
+            [""    ]
+];
+
+    $("#table").DataTable({
+      "deferRender": true,
+      "processing": true,
+      "data": data,
+      "columns": [
+            { title: "Name" },
+        ]
+    });
 </script>
 </nav>
 {{end}}
