@@ -15,6 +15,15 @@ ROOT_DIR="${ROOT_DIR:-$PWD}"
 TREE_DIR="${TREE_DIR:-$ROOT_DIR/packages}"
 PKGAPI="${PKGAPI:-https://pkgapi.herokuapp.com}"
 
+funnyQuote() {
+    messageQuote=(
+    "$(curl -s -L https://raw.githubusercontent.com/EugeneKay/git-jokes/lulz/Jokes.txt | shuf -n 1)"
+    "$(curl -s -L https://raw.githubusercontent.com/shrutikapoor08/devjoke/master/jsonParser/Jokes.json | jq -rc '.[]' | shuf -n1)"
+    )
+
+     echo ${messageQuote[$RANDOM % ${#messageQuote[@]} ]}
+}
+
 # Fetch depedendencies if not available
 PATH=$PATH:$ROOT_DIR/.bin
 
@@ -235,7 +244,7 @@ for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
             git push -f -v origin $BRANCH_NAME
 
             # Branch is ready now to open PR
-            hub pull-request $HUB_ARGS -m "$(git log -1 --pretty=%B)"
+            hub pull-request $HUB_ARGS -m "$(git log -1 --pretty=%B)" -m "$(funnyQuote)"
 
             git checkout $START_GIT_BRANCH # Return to original branch
         fi
@@ -277,7 +286,7 @@ for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
                     git push -f -v origin $BRANCH_NAME
 
                     # Branch is ready now to open PR
-                    hub pull-request $HUB_ARGS -m "$(git log -1 --pretty=%B)"
+                    hub pull-request $HUB_ARGS -m "$(git log -1 --pretty=%B)" -m "$(funnyQuote)"
 
                     git checkout $START_GIT_BRANCH # Return to original branch
                 fi
