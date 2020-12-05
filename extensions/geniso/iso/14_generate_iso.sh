@@ -86,7 +86,7 @@ cat << CEOF
 
   #################################################################
   #                                                               #
-  #  ISO image file '$IMAGE_NAME.iso' has been generated.  #
+  #  ISO image file '$IMAGE_NAME' has been generated.  #
   #                                                               #
   #################################################################
 
