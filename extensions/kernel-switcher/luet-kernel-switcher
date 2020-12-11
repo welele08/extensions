@@ -1,0 +1,74 @@
+#!/bin/bash
+set -e
+
+ALL_KERNELS=$(luet search --installed kernel --output json | jq -r '.packages[] | select( .category == "kernel" ) | map([.category, .name] | join("/")')
+
+MOCACCINO_RELEASE=$(cat /etc/mocaccino/release) # To package yet
+# Try to grab current kernel package name, excluding modules
+CURRENT_KERNEL_PACKAGE_NAME=$(luet search --installed kernel --output json | jq -r '.packages[] | select( .category == "kernel" ) | select( .name | test("modules") | not).name')
+MINIMAL_NAME="${CURRENT_KERNEL_PACKAGE_NAME/full/minimal}"
+export INITRAMFS_PACKAGES="${INITRAMFS_PACKAGES:-utils/busybox kernel/$MINIMAL_NAME system/mocaccino-init system/mocaccino-live-boot init/mocaccino-skel utils/yip utils/yip-integration}"
+
+generate_micro_initramfs() {
+    echo "Generating initramfs and grub setup"
+
+    BOOTDIR=/boot
+    TARGET=/
+    CURRENT_KERNEL=$(ls $BOOTDIR/kernel-*)
+    export KERNEL_GRUB=${CURRENT_KERNEL/${BOOTDIR}/}
+    export INITRAMFS=${CURRENT_KERNEL/kernel/initramfs}
+    export INITRAMFS_GRUB=${INITRAMFS/${BOOTDIR}/}
+
+    luet geninitramfs "${INITRAMFS_PACKAGES}"
+    pushd $TARGET/boot/
+    rm -rf Initrd
+    ln -s initramfs* Initrd
+    popd
+
+    mkdir -p ${TARGET}/boot/grub
+
+    root=$(cat ${TARGET}/boot/grub/grub.cfg | grep -Eo "root=(.*)")
+    cat > ${TARGET}/boot/grub/grub.cfg << EOF
+set default=0
+set timeout=10
+set gfxmode=auto
+set gfxpayload=keep
+insmod all_video
+insmod gfxterm
+menuentry "MocaccinoOS" {
+    linux /$KERNEL_GRUB ${root}
+    initrd /$INITRAMFS_GRUB
+}
+EOF
+    echo "GRUB_CMDLINE_LINUX_DEFAULT=\"${root}\"" >> $TARGET/etc/default/grub
+    # grub-mkconfig -o /boot/grub/grub.cfg
+    install_dev=${root/root=/}
+    install_dev=$(printf '%s' "$install_dev" | tr -d '0123456789')
+    grub-install $install_dev
+}
+
+
+cat <<'EOF'
+   .       . 
+ +  :      .
+           :       _
+       .   !   '  (_)
+          ,|.' 
+-  -- ---(-O-`--- --  -
+         ,`|'`.
+       ,   !    .
+           :       :  " 
+           .     --+--
+ .:        .       !
+EOF
+
+
+if [ "$MOCACCINO_RELEASE" == "micro" ]; then
+    luet replace $ALL_KERNELS --for "$@"
+    generate_micro_initramfs
+    exit 0
+fi
+
+
+echo "MocaccinoOS Version not yet supported"
+exit 1
