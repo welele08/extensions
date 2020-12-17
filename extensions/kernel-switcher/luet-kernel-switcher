@@ -1,13 +1,10 @@
 #!/bin/bash
 set -e
 
-ALL_KERNELS=$(luet search --installed kernel --output json | jq -r '.packages[] | select( .category == "kernel" ) | map([.category, .name] | join("/")')
+ALL_KERNELS=$(luet search --installed kernel --output json | jq -r '.packages[] | select( .category == "kernel" ) | [.category, .name] | join("/")')
 
 MOCACCINO_RELEASE=$(cat /etc/mocaccino/release) # To package yet
-# Try to grab current kernel package name, excluding modules
-CURRENT_KERNEL_PACKAGE_NAME=$(luet search --installed kernel --output json | jq -r '.packages[] | select( .category == "kernel" ) | select( .name | test("modules") | not).name')
-MINIMAL_NAME="${CURRENT_KERNEL_PACKAGE_NAME/full/minimal}"
-export INITRAMFS_PACKAGES="${INITRAMFS_PACKAGES:-utils/busybox kernel/$MINIMAL_NAME system/mocaccino-init system/mocaccino-live-boot init/mocaccino-skel utils/yip utils/yip-integration}"
+
 export LUET_NOLOCK=true
 generate_micro_initramfs() {
     echo "Generating initramfs and grub setup"
@@ -15,6 +12,12 @@ generate_micro_initramfs() {
     BOOTDIR=/boot
     TARGET=/
     CURRENT_KERNEL=$(ls $BOOTDIR/kernel-*)
+
+    # Try to grab current kernel package name, excluding modules
+    CURRENT_KERNEL_PACKAGE_NAME=$(luet search --installed kernel --output json | jq -r '.packages[] | select( .category == "kernel" ) | select( .name | test("modules") | not).name')
+    MINIMAL_NAME="${CURRENT_KERNEL_PACKAGE_NAME/full/minimal}"
+    export INITRAMFS_PACKAGES="${INITRAMFS_PACKAGES:-utils/busybox kernel/$MINIMAL_NAME system/mocaccino-init system/mocaccino-live-boot init/mocaccino-skel utils/yip utils/yip-integration}"
+
     export KERNEL_GRUB=${CURRENT_KERNEL/${BOOTDIR}/}
     export INITRAMFS=${CURRENT_KERNEL/kernel/initramfs}
     export INITRAMFS_GRUB=${INITRAMFS/${BOOTDIR}/}
@@ -67,7 +70,7 @@ if [ "$MOCACCINO_RELEASE" == "micro" ]; then
     if [ $# -eq 0 ]; then
         echo "Generating only initramfs"
     else
-        luet replace $ALL_KERNELS --for "$@"
+        luet replace $ALL_KERNELS --for "$1" --for "$1"-modules
     fi
     generate_micro_initramfs
     exit 0
