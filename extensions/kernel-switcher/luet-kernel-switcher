@@ -24,8 +24,9 @@ generate_micro_initramfs() {
 
     luet geninitramfs "${INITRAMFS_PACKAGES}"
     pushd $TARGET/boot/
-    rm -rf Initrd
-    ln -s initramfs* Initrd
+    rm -rf Initrd bzImage
+    ln -s ${KERNEL_GRUB#/} bzImage
+    ln -s ${INITRAMFS_GRUB#/} Initrd
     popd
 
     mkdir -p ${TARGET}/boot/grub
