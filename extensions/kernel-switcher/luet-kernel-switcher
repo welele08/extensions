@@ -71,7 +71,7 @@ if [ "$MOCACCINO_RELEASE" == "micro" ]; then
     if [ $# -eq 0 ]; then
         echo "Generating only initramfs"
     else
-        luet replace $ALL_KERNELS --for "$1" --for "$1"-modules
+        luet replace $ALL_KERNELS --for "$1" --for "${1/full/}"modules
     fi
     generate_micro_initramfs
     exit 0
