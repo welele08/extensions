@@ -9,6 +9,7 @@
 export IMAGE_NAME="${IMAGE_NAME:-luet_os.iso}"
 export LUET_PACKAGES="${LUET_PACKAGES:-}"
 export LUET_REPOS="${LUET_REPOS:-}"
+export LUET_INITRAMFS_REPOS="${LUET_INITRAMFS_REPOS:-}"
 export LUET_BIN="${LUET_BIN:-../luet}"
 export ROOT_DIR="${ROOT_DIR:-$PWD}"
 export LUET_CONFIG="${LUET_CONFIG:-../conf/luet-local.yaml}"
@@ -50,6 +51,7 @@ luet_install() {
 
   local rootfs=$1
   local packages="$2"
+  local repositories="$3"
 
   ## Initial rootfs
   pushd "$rootfs"
@@ -82,10 +84,10 @@ luet_install() {
     cp -rfv "${CA_CERTIFICATES}" etc/ssl/certs
   fi
 
-  if [ "${LUET_REPOS}" != "" ] ; then
+  if [ "${repositories}" != "" ] ; then
     # Install repositories packages before install
     # needed packages
-    ${SUDO} chroot . /luet install -y ${LUET_REPOS}
+    ${SUDO} chroot . /luet install -y ${repositories}
   fi
 
   ${SUDO} chroot . /luet config
@@ -130,10 +132,10 @@ if [[ "$GEN_ROOTFS" == true ]]; then
 
   if [[ "$OVERLAY" == true ]]; then
     echo "Building overlay"
-    luet_install "$ROOTFS_DIR" "${FIRST_STAGE}"
-    luet_install "$OVERLAY_DIR" "${LUET_PACKAGES}" || true
+    luet_install "$ROOTFS_DIR" "${FIRST_STAGE}" "${LUET_INITRAMFS_REPOS}"
+    luet_install "$OVERLAY_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}" || true
   else
-    luet_install "$ROOTFS_DIR" "${LUET_PACKAGES}" || true
+    luet_install "$ROOTFS_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}" || true
   fi
 
 fi
@@ -141,7 +143,7 @@ fi
 for script in $(ls ${SCRIPT_DIR} | grep '^[0-9]*_.*.sh'); do
   echo "Executing script '$script'."
   ${SCRIPT_DIR}/$script || {
-    echo "${script}: Something goes wrong! Exiting."
+    echo "${script}: Something went wrong! Exiting."
     exit 1
   }
 done

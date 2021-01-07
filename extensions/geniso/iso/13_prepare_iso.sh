@@ -7,6 +7,8 @@ LOOP_DEVICE_HDD=""
 luet_install() {
   local rootfs=$1
   local packages="$2"
+  local repositories="$3"
+
   mkdir -p "$rootfs/luetdb" || true
   cp -rfv  "${LUET_CONFIG}" "$rootfs/luet.yaml"
   cat <<EOF >> "$rootfs/luet.yaml"
@@ -19,8 +21,8 @@ repos_confdir:
 
 EOF
 
-  [ -n "${LUET_REPOS}" ] && \
-    ${LUET_BIN} install --config "$rootfs/luet.yaml" ${LUET_REPOS}
+  [ -n "${repositories}" ] && \
+    ${LUET_BIN} install --config "$rootfs/luet.yaml" ${repositories}
 
   ${LUET_BIN} install  --config "$rootfs/luet.yaml" ${packages}
 
@@ -75,7 +77,7 @@ prepare_boot_bios() {
   # In this case MLL will not boot and you will end up with some kind of
   # UEFI error message.
 
-  luet_install $ISOIMAGE "$ISOIMAGE_PACKAGES"
+  luet_install $ISOIMAGE "$ISOIMAGE_PACKAGES" "${LUET_REPOS}"
 }
 
 # Genrate 'El Torito' boot image as per UEFI sepcification 2.7,
@@ -91,7 +93,7 @@ prepare_boot_uefi() {
   rm -rf $WORKDIR/uefitmp
   mkdir -p $WORKDIR/uefitmp
 
-  luet_install $WORKDIR/uefitmp "$UEFI_PACKAGES"
+  luet_install $WORKDIR/uefitmp "$UEFI_PACKAGES" "${LUET_REPOS}"
 
   # Find the kernel size in bytes.
   kernel_size=`du -b $KERNEL_INSTALLED/kernel | awk '{print \$1}'`
