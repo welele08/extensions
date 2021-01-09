@@ -1,0 +1,11 @@
+#!/bin/bash
+# luet-remote-exec by Ettore Di Giacinto <mudler@mocaccino.org>
+# License: MIT
+set -e
+
+LUET_ARGS="${LUET_ARGS:-}"
+DOCKER_ARGS="${DOCKER_ARGS:---rm}"
+
+IMAGE=$(luet tree images --tree $PWD $LUET_ARGS -o json "$@" | jq -r '.packages[-1].image')
+
+docker run -ti $DOCKER_ARGS $IMAGE
