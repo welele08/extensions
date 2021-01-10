@@ -6,6 +6,31 @@ set -e
 LUET_ARGS="${LUET_ARGS:-}"
 DOCKER_ARGS="${DOCKER_ARGS:---rm}"
 
+_help () {
+    echo "Copyright (c) 2020 Luet Extensions
+
+luet remote-exec <package>
+
+Hook into a container where the package was built. Meant to be called inside a git repository where the Luet specs are.
+It uses docker, so you can also set DOCKER_HOST env var, to use a remote host to pull the docker images.
+
+Example:
+
+$> LUET_ARGS=... DOCKER_ARGS=... luet remote-exec layers/system-x
+"
+    return 0
+}
+
+if [ $# -eq 0 ] ; then
+    _help
+    exit 1
+fi
+
+if [ $1 == "help" ]; then
+    _help
+    exit 1
+fi
+
 IMAGE=$(luet tree images --tree $PWD $LUET_ARGS -o json "$@" | jq -r '.packages[-1].image')
 
 docker run -ti $DOCKER_ARGS $IMAGE
