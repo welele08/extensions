@@ -60,7 +60,7 @@ Example:
       exit 1
     fi
 
-    if [ $1 == "help" ]; then
+    if [[ $1 == "help" ]]; then
       _help
        exit 1
     fi
