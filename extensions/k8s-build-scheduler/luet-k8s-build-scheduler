@@ -4,10 +4,13 @@ TREE_DIR=${TREE_DIR:-}
 
 # Support to specify multiple trees too, separated by space
 for tree in $TREE_DIR; do
-    tree_args="$tree_args --tree $PWD/$tree"
-    tree_l="$tree_l $PWD/$tree"
+    tree_args="--tree $PWD/$tree $tree_args"
 done
 
+tree_l=$(printf "$PWD/%s " $TREE_DIR)
+tree_l=${tree_l% }
+
+tree_args=${tree_args% }
 
 export TREE=${TREE:-$tree_l}
 TREE_ARGS=${TREE_ARGS:-$tree_args}
