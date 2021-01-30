@@ -272,10 +272,14 @@ build() {
         PACKS="$PACKS $PACKAGE_CATEGORY/$PACKAGE_NAME"
     done
 
-    if [[ "$SMART_BUILD" == "true" ]]; then
-        smart_build $PACKS
+    if [[ -n "$PACKS" ]]; then
+        if [[ "$SMART_BUILD" == "true" ]]; then
+            smart_build $PACKS
+        else
+            parallel_build $PACKS
+        fi
     else
-        parallel_build $PACKS
+        echo "No packages to build"
     fi
 }
 
