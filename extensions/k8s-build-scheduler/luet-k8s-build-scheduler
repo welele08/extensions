@@ -15,7 +15,7 @@ tree_args=${tree_args% }
 export TREE=${TREE:-$tree_l}
 TREE_ARGS=${TREE_ARGS:-$tree_args}
 
-YAML_TREE=$(printf "%s," $TREE)
+YAML_TREE=$(printf "/%s," $TREE_DIR)
 YAML_TREE="[${YAML_TREE%,}]"
 
 BUCKET=${BUCKET:-}
@@ -156,7 +156,7 @@ spec:
         imageRepository: "$IMAGE_REPOSITORY" 
         onlyTarget: true
         compression: "$COMPRESSION_TYPE"
-    tree: $YAML_TREE
+        tree: $YAML_TREE
     registry:
         enabled: true
         registry: "$DOCKER_REGISTRY"
@@ -232,7 +232,7 @@ spec:
         imageRepository: "$IMAGE_REPOSITORY" 
         onlyTarget: true
         compression: "$COMPRESSION_TYPE"
-    tree: $YAML_TREE
+        tree: $YAML_TREE
     registry:
         enabled: true
         registry: "$DOCKER_REGISTRY"
