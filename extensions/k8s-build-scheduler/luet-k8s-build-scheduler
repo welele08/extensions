@@ -1,8 +1,20 @@
 #!/bin/bash
 
 TREE_DIR=${TREE_DIR:-}
-export TREE=${TREE:-$PWD/$TREE_DIR}
-TREE_ARGS=${TREE_ARGS:---tree $TREE}
+
+# Support to specify multiple trees too, separated by space
+for tree in $TREE_DIR; do
+    tree_args="$tree_args --tree $PWD/$tree"
+    tree_l="$tree_l $PWD/$tree"
+done
+
+
+export TREE=${TREE:-$tree_l}
+TREE_ARGS=${TREE_ARGS:-$tree_args}
+
+YAML_TREE=$(printf "%s," $TREE)
+YAML_TREE="[${YAML_TREE%,}]"
+
 BUCKET=${BUCKET:-}
 GITHUB_REPO=${GITHUB_REPO:-mocaccinoOS/desktop}
 IMAGE_REPOSITORY=${IMAGE_REPOSITORY:-}
@@ -139,8 +151,7 @@ spec:
         imageRepository: "$IMAGE_REPOSITORY" 
         onlyTarget: true
         compression: "$COMPRESSION_TYPE"
-    tree:
-    - /$TREE_DIR
+    tree: $YAML_TREE
     registry:
         enabled: true
         registry: "$DOCKER_REGISTRY"
@@ -215,8 +226,7 @@ spec:
         imageRepository: "$IMAGE_REPOSITORY" 
         onlyTarget: true
         compression: "$COMPRESSION_TYPE"
-    tree:
-    - /$TREE_DIR
+    tree: $YAML_TREE
     registry:
         enabled: true
         registry: "$DOCKER_REGISTRY"
