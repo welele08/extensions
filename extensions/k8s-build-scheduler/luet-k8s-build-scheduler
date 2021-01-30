@@ -88,6 +88,8 @@ wait_packages() {
 }
 
 create_repo() {
+    # Unsetting tree as it will be automatically filled by make create-repo
+    unset TREE
     set -ex
     mkdir build || true
     mc mirror --exclude '*.gz' --exclude '*.zstd' minio-ci/$BUCKET/ build
