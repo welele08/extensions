@@ -87,6 +87,9 @@ wait_packages() {
             sleep 20
         done
 
+        echo "Package built, deleting job"
+        kubectl delete packagebuild -n $NAMESPACE $JOB_NAME
+
     done
 }
 
@@ -128,8 +131,8 @@ parallel_build() {
             continue
             fi
             if [[ $(kubectl get --output=json -n "$NAMESPACE" pod "$JOB_NAME" | jq '.status.containerStatuses[0].state.terminated.exitCode | tonumber') != "0" ]]; then
-            echo "Job failed, deleting"
-            kubectl delete -n $NAMESPACE -f job.yaml 
+                echo "Job failed, deleting"
+                kubectl delete packagebuild -n $NAMESPACE $JOB_NAME
             fi
         fi
 
@@ -200,12 +203,12 @@ smart_build() {
 
             if kubectl get pods -n $NAMESPACE $JOB_NAME; then
                 if ! kubectl get --output=json -n "$NAMESPACE" pod "$JOB_NAME" | jq '.status.containerStatuses[0].state.terminated.exitCode | tonumber'; then
-                echo "Job for $PACKAGE_NAME already running , skipping"
-                continue 1
+                    echo "Job for $PACKAGE_NAME already running , skipping"
+                    continue 1
                 fi
                 if [[ $(kubectl get --output=json -n "$NAMESPACE" pod "$JOB_NAME" | jq '.status.containerStatuses[0].state.terminated.exitCode | tonumber') != "0" ]]; then
-                echo "Job failed, deleting"
-                kubectl delete -n $NAMESPACE -f job.yaml 
+                    echo "Job failed, deleting"
+                    kubectl delete packagebuild -n $NAMESPACE $JOB_NAME
                 fi
             fi
 
@@ -247,13 +250,20 @@ EOF
             PACKAGE_CATEGORY=${parts[0]}
             PACKAGE_NAME=${parts[1]}
             PACKAGE_VERSION=$(echo "$PKG_LIST" | jq -r ".packages[] | select(.name==\"$PACKAGE_NAME\" and .category==\"$PACKAGE_CATEGORY\").version")
+
+            export JOB_NAME=$PACKAGE_NAME-$PACKAGE_CATEGORY-$PACKAGE_VERSION
+            JOB_NAME=${JOB_NAME//[^a-zA-Z0-9]/}
+            JOB_NAME=`echo -n $JOB_NAME | tr A-Z a-z`
+
             echo "Checking package $PACKAGE_CATEGORY/$PACKAGE_NAME @ $PACKAGE_VERSION is built"
             while ! ( [ $(mc ls minio-ci/$BUCKET/$PACKAGE_NAME\-$PACKAGE_CATEGORY\-$PACKAGE_VERSION.package | wc -l) != "0" ] )
             do
                 echo "Package $PACKAGE_CATEGORY/$PACKAGE_NAME @ $PACKAGE_VERSION not built yet, sleeping"
                 sleep 20
             done
+
             echo "Package $PACKAGE_CATEGORY/$PACKAGE_NAME @ $PACKAGE_VERSION built!"
+            kubectl delete packagebuild -n $NAMESPACE $JOB_NAME
         done # Done waiting
     done
 }
