@@ -31,6 +31,7 @@ SMART_BUILD=${SMART_BUILD:-true}
 BUILD_PHASE=${BUILD_PHASE:-true}
 CREATE_PHASE=${CREATE_PHASE:-false}
 PRUNE_PHASE=${PRUNE_PHASE:-false}
+TRACE_LOGS_BACKGROUND=${TRACE_LOGS_BACKGROUND:-true}
 REF=${REF:-}
 NAMESPACE=${NAMESPACE:-}
 PKG_LIST=$(luet tree pkglist $TREE_ARGS -o json)
@@ -76,11 +77,12 @@ wait_packages() {
         while ! ( [ $(mc ls minio-ci/$BUCKET/$PACKAGE_NAME\-$PACKAGE_CATEGORY\-$PACKAGE_VERSION.package | wc -l) != "0" ] )
         do
             echo "Package $PACKAGE_CATEGORY/$PACKAGE_NAME @ $PACKAGE_VERSION not built yet, sleeping"
-
             # Kube only
-            kubectl attach -n $NAMESPACE "$JOB_NAME" -c "spec-build" -it 2>/dev/null ||:
-            if [ "$(kubectl get packagebuild -n $NAMESPACE $JOB_NAME -o json | jq -r '.status.state')"  == "Failed" ]; then
-                kubectl logs -n $NAMESPACE "$JOB_NAME" -c "spec-build"
+            kubectl logs -f -c spec-build -n $NAMESPACE $JOB_NAME
+
+            JOB_STATE=$(kubectl get packagebuild -n $NAMESPACE $JOB_NAME -o json | jq -r '.status.state')
+            if [[ "$JOB_STATE" == "Failed" ]]; then
+                echo "Job failed, exiting"
                 exit 1
             fi
 
@@ -126,12 +128,14 @@ parallel_build() {
         JOB_NAME=`echo -n $JOB_NAME | tr A-Z a-z`
 
         if kubectl get pods -n $NAMESPACE $JOB_NAME; then
-            if ! kubectl get --output=json -n "$NAMESPACE" pod "$JOB_NAME" | jq '.status.containerStatuses[0].state.terminated.exitCode | tonumber'; then
-            echo "Job for $PACKAGE_NAME already running , skipping"
-            continue
+            JOB_STATE=$(kubectl get packagebuild -n $NAMESPACE $JOB_NAME -o json | jq -r '.status.state')
+            if [[ "$JOB_STATE" == "Pending" ]]; then
+                echo "Job for $PACKAGE_NAME already running , skipping"
+                continue
             fi
-            if [[ $(kubectl get --output=json -n "$NAMESPACE" pod "$JOB_NAME" | jq '.status.containerStatuses[0].state.terminated.exitCode | tonumber') != "0" ]]; then
-                echo "Job failed, deleting"
+
+            if [[ "$JOB_STATE" == "Failed" ]]; then
+                echo "Current job failed, deleting"
                 kubectl delete packagebuild -n $NAMESPACE $JOB_NAME
             fi
         fi
@@ -202,12 +206,14 @@ smart_build() {
             JOB_NAME=`echo -n $JOB_NAME | tr A-Z a-z`
 
             if kubectl get pods -n $NAMESPACE $JOB_NAME; then
-                if ! kubectl get --output=json -n "$NAMESPACE" pod "$JOB_NAME" | jq '.status.containerStatuses[0].state.terminated.exitCode | tonumber'; then
+                JOB_STATE=$(kubectl get packagebuild -n $NAMESPACE $JOB_NAME -o json | jq -r '.status.state')
+                if [[ "$JOB_STATE" == "Pending" ]]; then
                     echo "Job for $PACKAGE_NAME already running , skipping"
                     continue 1
                 fi
-                if [[ $(kubectl get --output=json -n "$NAMESPACE" pod "$JOB_NAME" | jq '.status.containerStatuses[0].state.terminated.exitCode | tonumber') != "0" ]]; then
-                    echo "Job failed, deleting"
+
+                if [[ "$JOB_STATE" == "Failed" ]]; then
+                    echo "Current job failed, deleting"
                     kubectl delete packagebuild -n $NAMESPACE $JOB_NAME
                 fi
             fi
@@ -242,6 +248,7 @@ spec:
         username: "$DOCKER_USER"
         password: "$DOCKER_PASS"
 EOF
+
         done # Done tocompile
 
         # Now let's wait
@@ -259,7 +266,8 @@ EOF
             while ! ( [ $(mc ls minio-ci/$BUCKET/$PACKAGE_NAME\-$PACKAGE_CATEGORY\-$PACKAGE_VERSION.package | wc -l) != "0" ] )
             do
                 echo "Package $PACKAGE_CATEGORY/$PACKAGE_NAME @ $PACKAGE_VERSION not built yet, sleeping"
-                sleep 20
+                kubectl logs -f -c spec-build -n $NAMESPACE $JOB_NAME
+                sleep 5
             done
 
             echo "Package $PACKAGE_CATEGORY/$PACKAGE_NAME @ $PACKAGE_VERSION built!"
@@ -297,6 +305,12 @@ build() {
         echo "No packages to build"
     fi
 }
+
+if hash stern 2>/dev/null; then
+    if [[ "$TRACE_LOGS_BACKGROUND" == "true" ]]; then
+        stern -n $NAMESPACE . > build.log &
+    fi
+fi
 
 mc alias set minio-ci $MINIO_API_URL $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
 
