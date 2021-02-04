@@ -87,7 +87,7 @@ wait_packages() {
             fi
             if [[ "$JOB_STATE" == "Succeeded" ]]; then
                 echo "Build succeded"
-                continue 1
+                break 1
             fi
             sleep 20
         done
@@ -278,7 +278,7 @@ EOF
                 fi
                 if [[ "$JOB_STATE" == "Succeeded" ]]; then
                     echo "Build succeded"
-                    continue 1
+                    break 1
                 fi
             done
 
