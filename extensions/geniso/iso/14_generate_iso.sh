@@ -2,7 +2,9 @@
 
 set -e
 
-
+DIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
+. "$DIR/func.sh"
 
 # Generate ISO image for UEFI based systems.
 uefi() {
@@ -56,7 +58,7 @@ both() {
   $ISOIMAGE
 }
 
-echo "*** GENERATE ISO BEGIN ***"
+info "Starting generating ISO"
 
 if [ ! -d $ISOIMAGE ] ; then
   echo "Cannot locate ISO image work folder. Cannot continue."
@@ -82,12 +84,4 @@ case $FIRMWARE_TYPE in
     ;;
 esac
 
-cat << CEOF
-
-  #################################################################
-  #                                                               #
-  #  ISO image file '$IMAGE_NAME' has been generated.  #
-  #                                                               #
-  #################################################################
-
-CEOF
+ok "$IMAGE_NAME has been generated"

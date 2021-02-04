@@ -2,25 +2,28 @@
 
 set -e
 
-echo "**** Copy kernel"
-# Prepare the kernel install area.
-echo "Removing old kernel artifacts. This may take a while."
-rm -rf $KERNEL_INSTALLED
+DIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
+. "$DIR/func.sh"
+
+info "Copy kernel"
+
+rm -rf $KERNEL_INSTALLED || true
 mkdir -p $KERNEL_INSTALLED
-BOOT_DIR=$ROOTFS_DIR/boot
-if [[ -L "$BOOT_DIR/bzImage" ]]; then
 
-bz=$(readlink -f $BOOT_DIR/bzImage)
-# Install the kernel file.
-cp $BOOT_DIR/$(basename $bz) \
-  $KERNEL_INSTALLED/kernel
-
-else 
-cp $BOOT_DIR/bzImage \
-  $KERNEL_INSTALLED/kernel
-
+# Try to find the kernel file in the overlay or initramfs areas
+if [[ -e "$ROOTFS_DIR/boot/$INITRAMFS_KERNEL" ]] || [[ -L "$ROOTFS_DIR/boot/$INITRAMFS_KERNEL" ]]; then
+  BOOT_DIR=$ROOTFS_DIR/boot
+elif [[ -e "$OVERLAY_DIR/boot/$INITRAMFS_KERNEL" ]] || [[ -L "$OVERLAY_DIR/boot/$INITRAMFS_KERNEL" ]]; then
+  BOOT_DIR=$OVERLAY_DIR/boot
 fi
 
-echo "*** GENERATE ROOTFS BEGIN ***"
-
-
+if [[ -L "$BOOT_DIR/$INITRAMFS_KERNEL" ]]; then
+  bz=$(readlink -f $BOOT_DIR/$INITRAMFS_KERNEL)
+  # Install the kernel file.
+  cp $BOOT_DIR/$(basename $bz) \
+    $KERNEL_INSTALLED/kernel
+else
+  cp $BOOT_DIR/$INITRAMFS_KERNEL \
+    $KERNEL_INSTALLED/kernel
+fi

@@ -8,6 +8,8 @@
 
 set -e
 
+. "/usr/share/luet-extension/geniso/func.sh"
+
 export IMAGE_NAME="${IMAGE_NAME:-luet_os.iso}"
 export LUET_PACKAGES="${LUET_PACKAGES:-}"
 export LUET_REPOS="${LUET_REPOS:-}"
@@ -27,13 +29,11 @@ export LUET_YES=true
 export ROOTFS_DIR="$WORKDIR/rootfs"
 export OVERLAY_DIR="$WORKDIR/overlay"
 export ISOIMAGE="$WORKDIR/isoimage"
-
 export KERNEL_INSTALLED=$WORKDIR/kernel/kernel_installed
-
 export FIRST_STAGE="${FIRST_STAGE:-distro/seed}"
-
 export GEN_ROOTFS="${GEN_ROOTFS:-true}"
-
+export INITRAMFS_KERNEL="${INITRAMFS_KERNEL:-bzImage}"
+export INITRAMFS_ROOTFS="${INITRAMFS_ROOTFS:-}"
 export SCRIPT_DIR="${SCRIPT_DIR:-/usr/share/luet-extension/geniso}"
 export SUDO=${SUDO:-}
 
@@ -45,63 +45,6 @@ umount_rootfs() {
   ${SUDO} umount -l $rootfs/dev/ > /dev/null 2>&1 || true
   ${SUDO} umount -l $rootfs/sys/ > /dev/null 2>&1 || true
   ${SUDO} umount -l $rootfs/proc/  > /dev/null 2>&1 || true
-}
-
-# TODO: replace with luet box exec
-luet_install() {
-
-  local rootfs=$1
-  local packages="$2"
-  local repositories="$3"
-
-  ## Initial rootfs
-  pushd "$rootfs"
- # mkdir -p boot
- # mount --bind $BOOT_DIR boot
-  mkdir -p var/lock
-  mkdir -p run/lock
-  mkdir -p var/cache/luet
-  mkdir -p var/luet
-  mkdir -p etc/luet
-
-  mkdir -p dev
-  mkdir -p sys
-  mkdir -p proc
-  mkdir -p tmp
-  mkdir -p dev/pts
-  cp -rfv "${LUET_CONFIG}" etc/luet/luet.yaml
-  cp -rfv "${LUET_BIN}" luet
-  ${SUDO} mount --bind /dev $rootfs/dev/
-  ${SUDO} mount --bind /sys $rootfs/sys/
-  ${SUDO} mount --bind /proc $rootfs/proc/
-  ${SUDO} mount --bind /dev/pts $rootfs/dev/pts
-
-  # Required to connect to remote repositories
-  if [ ! -f "etc/resolv.conf" ]; then
-    echo "nameserver 8.8.8.8" > etc/resolv.conf
-  fi
-  if [ ! -f "etc/ssl/certs/ca-certificates.crt" ]; then
-    mkdir -p etc/ssl/certs
-    cp -rfv "${CA_CERTIFICATES}" etc/ssl/certs
-  fi
-
-  if [ "${repositories}" != "" ] ; then
-    # Install repositories packages before install
-    # needed packages
-    ${SUDO} chroot . /luet install -y ${repositories} >> $WORKDIR/luet_install.log 2>&1
-  fi
-
-  ${SUDO} chroot . /luet config >> $WORKDIR/luet_install.log 2>&1
-  echo "Installing ${packages} in $rootfs, logs available at $WORKDIR/luet_install.log"
-  ${SUDO} chroot . /luet install -y ${packages}  >> $WORKDIR/luet_install.log 2>&1
-  ${SUDO} chroot . /luet cleanup
-
-  # Cleanup/umount
-  umount_rootfs $rootfs
-
-  ${SUDO} rm -rf luet
-  popd
-
 }
 
 trap cleanup 1 2 3 6 EXIT
@@ -124,28 +67,19 @@ if [[ "$GEN_ROOTFS" == true ]]; then
   rm -rf "$OVERLAY_DIR"
   mkdir -p "$OVERLAY_DIR"
 
-  echo "Initial root:"
-  ls -liah  "$ROOTFS_DIR"
-  ls -liah  "$OVERLAY_DIR"
-
-
-  set -e
-
-
   if [[ "$OVERLAY" == true ]]; then
-    echo "Building overlay"
+    info "Building overlay"
     luet_install "$ROOTFS_DIR" "${FIRST_STAGE}" "${LUET_INITRAMFS_REPOS}" 
     luet_install "$OVERLAY_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}"
   else
     luet_install "$ROOTFS_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}"
   fi
-
 fi
 
 for script in $(ls ${SCRIPT_DIR} | grep '^[0-9]*_.*.sh'); do
-  echo "Executing script '$script'."
+  #info "Running phase '$script'."
   ${SCRIPT_DIR}/$script || {
-    echo "${script}: Something went wrong! Exiting."
+    err "${script}: Something went wrong! Exiting."
     exit 1
   }
 done

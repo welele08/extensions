@@ -2,35 +2,11 @@
 
 set -e
 
+DIR="${BASH_SOURCE%/*}"
+if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
+. "$DIR/func.sh"
+
 LOOP_DEVICE_HDD=""
-
-luet_install() {
-  local rootfs=$1
-  local packages="$2"
-  local repositories="$3"
-
-  mkdir -p "$rootfs/luetdb" || true
-  cp -rfv  "${LUET_CONFIG}" "$rootfs/luet.yaml"
-  cat <<EOF >> "$rootfs/luet.yaml"
-system:
-  rootfs: $rootfs
-  database_path: "/luetdb"
-  database_engine: "boltdb"
-repos_confdir:
-  - $rootfs/etc/luet/repos.conf.d
-
-EOF
-  echo "Installing ${repositories} in $rootfs, logs available at $WORKDIR/luet_install.log"
-  [ -n "${repositories}" ] && \
-    ${LUET_BIN} install --config "$rootfs/luet.yaml" ${repositories} >> $WORKDIR/luet_install.log 2>&1
-  echo "Installing ${packages} in $rootfs, logs available at $WORKDIR/luet_install.log"
-  ${LUET_BIN} install  --config "$rootfs/luet.yaml" ${packages} >> $WORKDIR/luet_install.log 2>&1
-
-  ${LUET_BIN} cleanup
-  rm -rfv "$rootfs/luetdb"
-  rm -rfv "$rootfs/luet.yaml"
-  rm -rfv "$rootfs/luet/repos.conf.d"
-}
 
 init() {
   # Remove the old ISO generation area if it exists.
@@ -124,7 +100,7 @@ prepare_boot_uefi() {
   mkdir -p $WORKDIR/uefi
   mount $WORKDIR/uefi.img $WORKDIR/uefi
 
-  cp -rfv  $WORKDIR/uefitmp/* $WORKDIR/uefi
+  cp -rf  $WORKDIR/uefitmp/* $WORKDIR/uefi
 
   echo "Preparing kernel and rootfs."
   mkdir -p $WORKDIR/uefi/minimal/$ARCH

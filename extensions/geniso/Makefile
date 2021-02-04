@@ -16,3 +16,4 @@ install: build
 	install -m 0755 iso/10_pack_rootfs.sh $(DESTDIR)/$(SHAREDIR)/luet-extension/geniso
 	install -m 0755 iso/13_prepare_iso.sh $(DESTDIR)/$(SHAREDIR)/luet-extension/geniso
 	install -m 0755 iso/14_generate_iso.sh $(DESTDIR)/$(SHAREDIR)/luet-extension/geniso
+	install -m 0755 iso/func.sh $(DESTDIR)/$(SHAREDIR)/luet-extension/geniso
