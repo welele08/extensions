@@ -302,9 +302,9 @@ build() {
 
     if [[ -n "$PACKS" ]]; then
         if [[ "$SMART_BUILD" == "true" ]]; then
-            smart_build $PACKS
+            smart_build "$PACKS"
         else
-            parallel_build $PACKS
+            parallel_build "$PACKS"
         fi
     else
         echo "No packages to build"
