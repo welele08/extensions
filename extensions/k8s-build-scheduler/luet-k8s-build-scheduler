@@ -76,18 +76,18 @@ wait_packages() {
         echo "Checking package $PACKAGE_CATEGORY/$PACKAGE_NAME @ $PACKAGE_VERSION is built"
         while ! ( [ $(mc ls minio-ci/$BUCKET/$PACKAGE_NAME\-$PACKAGE_CATEGORY\-$PACKAGE_VERSION.package | wc -l) != "0" ] )
         do
-            echo "Package $PACKAGE_CATEGORY/$PACKAGE_NAME @ $PACKAGE_VERSION not built yet, sleeping"
-            # Kube only
-            kubectl logs -f -c spec-build -n $NAMESPACE $JOB_NAME
-
+            echo "Package $PACKAGE_CATEGORY/$PACKAGE_NAME @ $PACKAGE_VERSION not uploaded yet, sleeping"
             JOB_STATE=$(kubectl get packagebuild -n $NAMESPACE $JOB_NAME -o json | jq -r '.status.state')
+            if [[ "$JOB_STATE" == "Pending" ]] || [[ "$JOB_STATE" == "Running" ]]; then
+                kubectl logs -f -c spec-build -n $NAMESPACE $JOB_NAME
+            fi
             if [[ "$JOB_STATE" == "Failed" ]]; then
+                kubectl logs -f -c spec-build -n $NAMESPACE $JOB_NAME
                 echo "Job failed, exiting"
                 exit 1
             fi
             if [[ "$JOB_STATE" == "Succeeded" ]]; then
                 echo "Build succeded"
-                break 1
             fi
             sleep 20
         done
@@ -268,17 +268,18 @@ EOF
             echo "Checking package $PACKAGE_CATEGORY/$PACKAGE_NAME @ $PACKAGE_VERSION is built"
             while ! ( [ $(mc ls minio-ci/$BUCKET/$PACKAGE_NAME\-$PACKAGE_CATEGORY\-$PACKAGE_VERSION.package | wc -l) != "0" ] )
             do
-                echo "Package $PACKAGE_CATEGORY/$PACKAGE_NAME @ $PACKAGE_VERSION not built yet, sleeping"
-                kubectl logs -f -c spec-build -n $NAMESPACE $JOB_NAME
-
+                echo "Package $PACKAGE_CATEGORY/$PACKAGE_NAME @ $PACKAGE_VERSION not uploaded yet, sleeping"
                 JOB_STATE=$(kubectl get packagebuild -n $NAMESPACE $JOB_NAME -o json | jq -r '.status.state')
+                if [[ "$JOB_STATE" == "Pending" ]] || [[ "$JOB_STATE" == "Running" ]]; then
+                    kubectl logs -f -c spec-build -n $NAMESPACE $JOB_NAME
+                fi
                 if [[ "$JOB_STATE" == "Failed" ]]; then
+                    kubectl logs -f -c spec-build -n $NAMESPACE $JOB_NAME
                     echo "Job failed, exiting"
                     exit 1
                 fi
                 if [[ "$JOB_STATE" == "Succeeded" ]]; then
                     echo "Build succeded"
-                    break 1
                 fi
             done
 
