@@ -85,7 +85,10 @@ wait_packages() {
                 echo "Job failed, exiting"
                 exit 1
             fi
-
+            if [[ "$JOB_STATE" == "Succeeded" ]]; then
+                echo "Build succeded"
+                continue 1
+            fi
             sleep 20
         done
 
@@ -272,6 +275,10 @@ EOF
                 if [[ "$JOB_STATE" == "Failed" ]]; then
                     echo "Job failed, exiting"
                     exit 1
+                fi
+                if [[ "$JOB_STATE" == "Succeeded" ]]; then
+                    echo "Build succeded"
+                    continue 1
                 fi
             done
 
