@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ex
+set -e
 
 LOOP_DEVICE_HDD=""
 
@@ -20,11 +20,11 @@ repos_confdir:
   - $rootfs/etc/luet/repos.conf.d
 
 EOF
-
+  echo "Installing ${repositories} in $rootfs, logs available at $WORKDIR/luet_install.log"
   [ -n "${repositories}" ] && \
-    ${LUET_BIN} install --config "$rootfs/luet.yaml" ${repositories}
-
-  ${LUET_BIN} install  --config "$rootfs/luet.yaml" ${packages}
+    ${LUET_BIN} install --config "$rootfs/luet.yaml" ${repositories} >> $WORKDIR/luet_install.log 2>&1
+  echo "Installing ${packages} in $rootfs, logs available at $WORKDIR/luet_install.log"
+  ${LUET_BIN} install  --config "$rootfs/luet.yaml" ${packages} >> $WORKDIR/luet_install.log 2>&1
 
   ${LUET_BIN} cleanup
   rm -rfv "$rootfs/luetdb"
@@ -41,6 +41,8 @@ init() {
   mkdir -p $ISOIMAGE
 }
 
+## XXX: Move it away. Or we ship kernels in a different package, instead of finding symlinks
+#  or either we ask it in the spec explictly.
 prepare_mll_bios() {
   # This is the folder where we keep legacy BIOS boot artifacts.
   mkdir -p $ISOIMAGE/boot

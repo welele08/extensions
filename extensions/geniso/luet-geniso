@@ -6,6 +6,8 @@
 # https://github.com/Tomas-M/linux-live.git
 # http://minimal.linux-bg.org/#home
 
+set -e
+
 export IMAGE_NAME="${IMAGE_NAME:-luet_os.iso}"
 export LUET_PACKAGES="${LUET_PACKAGES:-}"
 export LUET_REPOS="${LUET_REPOS:-}"
@@ -36,14 +38,13 @@ export SCRIPT_DIR="${SCRIPT_DIR:-/usr/share/luet-extension/geniso}"
 export SUDO=${SUDO:-}
 
 umount_rootfs() {
-  set +e
   local rootfs=$1
   #${SUDO} umount -l $rootfs/boot
 
-  ${SUDO} umount -l $rootfs/dev/pts
-  ${SUDO} umount -l $rootfs/dev/
-  ${SUDO} umount -l $rootfs/sys/
-  ${SUDO} umount -l $rootfs/proc/
+  ${SUDO} umount -l $rootfs/dev/pts > /dev/null 2>&1 || true
+  ${SUDO} umount -l $rootfs/dev/ > /dev/null 2>&1 || true
+  ${SUDO} umount -l $rootfs/sys/ > /dev/null 2>&1 || true
+  ${SUDO} umount -l $rootfs/proc/  > /dev/null 2>&1 || true
 }
 
 # TODO: replace with luet box exec
@@ -87,15 +88,16 @@ luet_install() {
   if [ "${repositories}" != "" ] ; then
     # Install repositories packages before install
     # needed packages
-    ${SUDO} chroot . /luet install -y ${repositories}
+    ${SUDO} chroot . /luet install -y ${repositories} >> $WORKDIR/luet_install.log 2>&1
   fi
 
-  ${SUDO} chroot . /luet config
-  ${SUDO} chroot . /luet install -y ${packages}
+  ${SUDO} chroot . /luet config >> $WORKDIR/luet_install.log 2>&1
+  echo "Installing ${packages} in $rootfs, logs available at $WORKDIR/luet_install.log"
+  ${SUDO} chroot . /luet install -y ${packages}  >> $WORKDIR/luet_install.log 2>&1
   ${SUDO} chroot . /luet cleanup
 
   # Cleanup/umount
-  umount_rootfs $rootfs || true
+  umount_rootfs $rootfs
 
   ${SUDO} rm -rf luet
   popd
@@ -132,10 +134,10 @@ if [[ "$GEN_ROOTFS" == true ]]; then
 
   if [[ "$OVERLAY" == true ]]; then
     echo "Building overlay"
-    luet_install "$ROOTFS_DIR" "${FIRST_STAGE}" "${LUET_INITRAMFS_REPOS}"
-    luet_install "$OVERLAY_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}" || true
+    luet_install "$ROOTFS_DIR" "${FIRST_STAGE}" "${LUET_INITRAMFS_REPOS}" 
+    luet_install "$OVERLAY_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}"
   else
-    luet_install "$ROOTFS_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}" || true
+    luet_install "$ROOTFS_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}"
   fi
 
 fi

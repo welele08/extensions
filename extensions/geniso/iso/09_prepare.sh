@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -ex
+set -e
 
 echo "**** Copy kernel"
 # Prepare the kernel install area.
