@@ -30,7 +30,7 @@ export ROOTFS_DIR="$WORKDIR/rootfs"
 export OVERLAY_DIR="$WORKDIR/overlay"
 export ISOIMAGE="$WORKDIR/isoimage"
 export KERNEL_INSTALLED=$WORKDIR/kernel/kernel_installed
-export FIRST_STAGE="${FIRST_STAGE:-distro/seed}"
+export FIRST_STAGE="${FIRST_STAGE:-}"
 export GEN_ROOTFS="${GEN_ROOTFS:-true}"
 export INITRAMFS_KERNEL="${INITRAMFS_KERNEL:-bzImage}"
 export INITRAMFS_ROOTFS="${INITRAMFS_ROOTFS:-}"
@@ -69,7 +69,9 @@ if [[ "$GEN_ROOTFS" == true ]]; then
 
   if [[ "$OVERLAY" == true ]]; then
     info "Building overlay"
-    luet_install "$ROOTFS_DIR" "${FIRST_STAGE}" "${LUET_INITRAMFS_REPOS}" 
+    if [[ -n "$FIRST_STAGE" ]]; then
+      luet_install "$ROOTFS_DIR" "${FIRST_STAGE}" "${LUET_INITRAMFS_REPOS}"
+    fi
     luet_install "$OVERLAY_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}"
   else
     luet_install "$ROOTFS_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}"
