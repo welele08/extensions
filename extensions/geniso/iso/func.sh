@@ -121,6 +121,8 @@ luet_install() {
   local rootfs=$1
   local packages="$2"
   local repositories="$3"
+  local keep_db="$4"
+
   export LUET_NOLOCK=true
  
   # Create a valid FS structure in order to boot
@@ -151,7 +153,18 @@ EOF
   echo "Installing packages ${packages} in $rootfs, logs available at $WORKDIR/luet_install.log"
   ${LUET_BIN} install --config "$rootfs/luet.yaml" ${packages} >> $WORKDIR/luet_install.log 2>&1
   ${LUET_BIN} cleanup --config "$rootfs/luet.yaml"
-  rm -rf "$rootfs/luetdb"
+
+  if [[ "$keep_db" == "true" ]]; then
+    # Keep db and move it to luet default
+    mkdir -p "$rootfs/var/luet" || true
+    if [ -d "$rootfs/var/luet/db" ]; then
+      rm -rf "$rootfs/var/luet/db"
+    fi
+    mv "$rootfs/luetdb" "$rootfs/var/luet/db"
+  else
+    rm -rf "$rootfs/luetdb"
+  fi
+
   rm -rf "$rootfs/luet.yaml"
   rm -rf "$rootfs/luet/repos.conf.d"
 }

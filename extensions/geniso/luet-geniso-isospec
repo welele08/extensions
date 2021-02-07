@@ -56,6 +56,8 @@ fi
 export INITRAMFS_KERNEL="$(yq r $SPEC 'initramfs.kernel_file')"
 export INITRAMFS_ROOTFS="$(yq r $SPEC 'initramfs.rootfs_file')"
 
+export KEEP_LUET_DB="$(yq r $SPEC 'packages.keep_luet_db')"
+
 export LUET_PACKAGES="$(yq r -j $SPEC 'packages.rootfs' | jq -r '.[]' | xargs echo)"
 export LUET_REPOS="$(yq r -j $SPEC 'repository.packages' | jq -r '.[]' | xargs echo)"
 export FIRST_STAGE="$(yq r -j $SPEC 'packages.initramfs' | jq -r '.[]' | xargs echo)"

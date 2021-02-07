@@ -36,7 +36,7 @@ export INITRAMFS_KERNEL="${INITRAMFS_KERNEL:-bzImage}"
 export INITRAMFS_ROOTFS="${INITRAMFS_ROOTFS:-}"
 export SCRIPT_DIR="${SCRIPT_DIR:-/usr/share/luet-extension/geniso}"
 export SUDO=${SUDO:-}
-
+export KEEP_LUET_DB=${KEEP_LUET_DB:-false}
 umount_rootfs() {
   local rootfs=$1
   #${SUDO} umount -l $rootfs/boot
@@ -70,9 +70,10 @@ if [[ "$GEN_ROOTFS" == true ]]; then
   if [[ "$OVERLAY" == true ]]; then
     info "Building overlay"
     if [[ -n "$FIRST_STAGE" ]]; then
+      info "Installing packages for initramfs"
       luet_install "$ROOTFS_DIR" "${FIRST_STAGE}" "${LUET_INITRAMFS_REPOS}"
     fi
-    luet_install "$OVERLAY_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}"
+    luet_install "$OVERLAY_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}" "${KEEP_LUET_DB}"
   else
     luet_install "$ROOTFS_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}"
   fi
