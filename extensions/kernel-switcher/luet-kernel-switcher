@@ -44,11 +44,16 @@ menuentry "MocaccinoOS" {
     initrd /$INITRAMFS_GRUB
 }
 EOF
-    echo "GRUB_CMDLINE_LINUX_DEFAULT=\"${root}\"" >> $TARGET/etc/default/grub
+
+    GRUB_TARGET=
+    if [ -e "/sys/firmware/efi" ]; then
+        GRUB_TARGET="--target=x86_64-efi --efi-dir=/boot/efi"
+    fi
+    echo "GRUB_CMDLINE_LINUX_DEFAULT=\"${root}\"" > $TARGET/etc/default/grub
     # grub-mkconfig -o /boot/grub/grub.cfg
     install_dev=${root/root=/}
     install_dev=$(printf '%s' "$install_dev" | tr -d '0123456789')
-    grub-install $install_dev
+    grub-install ${GRUB_TARGET} $install_dev
 }
 
 
