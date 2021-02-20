@@ -19,8 +19,7 @@ export ROOT_DIR="${ROOT_DIR:-$PWD}"
 export LUET_CONFIG="${LUET_CONFIG:-../conf/luet-local.yaml}"
 export WORKDIR="$ROOT_DIR/isowork"
 export OVERLAY="${OVERLAY:-false}"
-export FIRMWARE_TYPE="${FIRMWARE_TYPE:-both}"
-export CA_CERTIFICATES="${CA_CERTIFICATES:-/etc/ssl/certs/ca-certificates.crt}"
+export ISOLABEL="${ISOLABEL:-ISOIMAGE}"
 export ARCH="${ARCH:-x86_64}"
 export ISOIMAGE_PACKAGES="${ISOIMAGE_PACKAGES:-live/syslinux system/sabayon-live-boot}"
 export UEFI_PACKAGES="${UEFI_PACKAGES:-live/systemd-boot system/sabayon-live-boot}"
@@ -37,6 +36,7 @@ export INITRAMFS_ROOTFS="${INITRAMFS_ROOTFS:-}"
 export SCRIPT_DIR="${SCRIPT_DIR:-/usr/share/luet-extension/geniso}"
 export SUDO=${SUDO:-}
 export KEEP_LUET_DB=${KEEP_LUET_DB:-false}
+
 umount_rootfs() {
   local rootfs=$1
   #${SUDO} umount -l $rootfs/boot

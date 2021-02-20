@@ -158,38 +158,13 @@ trap "cleanup_on_exit" EXIT INT TERM
 
 echo "*** PREPARE ISO BEGIN ***"
 
-echo "Firmware type is '$FIRMWARE_TYPE'."
 
-case $FIRMWARE_TYPE in
-  bios)
-    init
-    prepare_boot_bios
-    prepare_mll_bios
-    prepare_overlay
-    ;;
-
-  uefi)
-    check_root
-    init
-    prepare_boot_uefi
-    prepare_overlay
-    ;;
-
-  both)
-    check_root
-    init
-    prepare_boot_uefi
-    prepare_boot_bios
-    prepare_mll_bios
-    prepare_overlay
-    ;;
-
-  *)
-    echo "Firmware type '$FIRMWARE_TYPE' is not recognized. Cannot continue."
-    exit 1
-    ;;
-esac
-
+check_root
+init
+prepare_boot_uefi
+prepare_boot_bios
+prepare_mll_bios
+prepare_overlay
 
 
 echo "*** PREPARE ISO END ***"

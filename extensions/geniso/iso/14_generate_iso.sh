@@ -6,44 +6,12 @@ DIR="${BASH_SOURCE%/*}"
 if [[ ! -d "$DIR" ]]; then DIR="$PWD"; fi
 . "$DIR/func.sh"
 
-# Generate ISO image for UEFI based systems.
-uefi() {
-  cd $ISOIMAGE
-
-  # Now we generate 'hybrid' ISO image file which can also be used on
-  # USB flash drive, e.g. 'dd if=minimal_linux_live.iso of=/dev/sdb'.
-  xorriso -as mkisofs \
-    -isohybrid-mbr $ISOIMAGE/boot/syslinux/isohdpfx.bin \
-    -c boot/boot.cat \
-    -e boot/uefi.img \
-      -no-emul-boot \
-      -isohybrid-gpt-basdat \
-    -o "$ROOT_DIR/${IMAGE_NAME}" \
-    $ISOIMAGE
-}
-
-# Generate ISO image for BIOS based systems.
-bios() {
-  cd $ISOIMAGE
-
-  # Now we generate 'hybrid' ISO image file which can also be used on
-  # USB flash drive, e.g. 'dd if=minimal_linux_live.iso of=/dev/sdb'.
-  xorriso -as mkisofs \
-    -isohybrid-mbr $ISOIMAGE/boot/syslinux/isohdpfx.bin \
-    -c boot/syslinux/boot.cat \
-    -b boot/syslinux/isolinux.bin \
-      -no-emul-boot \
-      -boot-load-size 4 \
-      -boot-info-table \
-    -o "$ROOT_DIR/${IMAGE_NAME}" \
-    $ISOIMAGE
-}
-
 # Generate ISO image for both BIOS and UEFI based systems.
-both() {
+geniso() {
   cd $ISOIMAGE
 
   xorriso -as mkisofs \
+    -volid "$ISOLABEL" \
     -isohybrid-mbr $ISOIMAGE/boot/syslinux/isohdpfx.bin \
     -c boot/syslinux/boot.cat \
     -b boot/syslinux/isolinux.bin \
@@ -65,23 +33,6 @@ if [ ! -d $ISOIMAGE ] ; then
   exit 1
 fi
 
-case $FIRMWARE_TYPE in
-  bios)
-    bios
-    ;;
-
-  uefi)
-    uefi
-    ;;
-
-  both)
-    both
-    ;;
-
-  *)
-    echo "Firmware type '$FIRMWARE_TYPE' is not recognized. Cannot continue."
-    exit 1
-    ;;
-esac
+geniso
 
 ok "$IMAGE_NAME has been generated"
