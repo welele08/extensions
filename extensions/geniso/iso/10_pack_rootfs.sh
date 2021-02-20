@@ -26,9 +26,9 @@ if [[ -z "$INITRAMFS_ROOTFS" ]]; then
 else
     echo "Copying initramfs"
     # Try to find the rootfs file in the overlay or initramfs areas
-    if [[ -e "$ROOTFS_DIR/boot/$INITRAMFS_ROOTFS" ]]; then
+    if [[ -e "$ROOTFS_DIR/boot/$INITRAMFS_ROOTFS" ]] || [[ -L "$ROOTFS_DIR/boot/$INITRAMFS_ROOTFS" ]]; then
         BOOT_DIR=$ROOTFS_DIR/boot
-    elif [[ -e "$OVERLAY_DIR/boot/$INITRAMFS_ROOTFS" ]]; then
+    elif [[ -e "$OVERLAY_DIR/boot/$INITRAMFS_ROOTFS" ]] || [[ -L "$OVERLAY_DIR/boot/$INITRAMFS_ROOTFS" ]]; then
         BOOT_DIR=$OVERLAY_DIR/boot
     fi
 
