@@ -32,6 +32,9 @@ BUILD_PHASE=${BUILD_PHASE:-true}
 CREATE_PHASE=${CREATE_PHASE:-false}
 PRUNE_PHASE=${PRUNE_PHASE:-false}
 TRACE_LOGS_BACKGROUND=${TRACE_LOGS_BACKGROUND:-true}
+BACKEND=${BACKEND:-img}
+DOCKER_HOST=${DOCKER_HOST:-}
+PRIVILEGED=${PRIVILEGED:-true}
 REF=${REF:-}
 NAMESPACE=${NAMESPACE:-}
 PKG_LIST=$(luet tree pkglist $TREE_ARGS -o json)
@@ -166,6 +169,11 @@ spec:
         imageRepository: "$IMAGE_REPOSITORY" 
         onlyTarget: true
         compression: "$COMPRESSION_TYPE"
+        privileged: $PRIVILEGED
+        liveOutput: true
+        environment:
+        - name: DOCKER_HOST
+          value: "$DOCKER_HOST"
         tree: $YAML_TREE
     registry:
         enabled: true
@@ -245,6 +253,11 @@ spec:
         onlyTarget: true
         compression: "$COMPRESSION_TYPE"
         tree: $YAML_TREE
+        privileged: $PRIVILEGED
+        liveOutput: true
+        environment:
+        - name: DOCKER_HOST
+          value: "$DOCKER_HOST"
     registry:
         enabled: true
         registry: "$DOCKER_REGISTRY"
