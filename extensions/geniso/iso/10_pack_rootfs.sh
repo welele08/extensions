@@ -24,14 +24,23 @@ if [[ -z "$INITRAMFS_ROOTFS" ]]; then
 
     popd  > /dev/null 2>&1
 else
+    echo "Copying initramfs"
     # Try to find the rootfs file in the overlay or initramfs areas
     if [[ -e "$ROOTFS_DIR/boot/$INITRAMFS_ROOTFS" ]]; then
         BOOT_DIR=$ROOTFS_DIR/boot
     elif [[ -e "$OVERLAY_DIR/boot/$INITRAMFS_ROOTFS" ]]; then
         BOOT_DIR=$OVERLAY_DIR/boot
     fi
-    cp $BOOT_DIR/$INITRAMFS_ROOTFS \
-        $WORKDIR/rootfs.cpio.xz
+
+    if [[ -L "$BOOT_DIR/$INITRAMFS_ROOTFS" ]]; then
+        bz=$(readlink -f $BOOT_DIR/$INITRAMFS_ROOTFS)
+        # Install the kernel file.
+        cp $BOOT_DIR/$(basename $bz) \
+            $WORKDIR/rootfs.cpio.xz
+    else
+        cp $BOOT_DIR/$INITRAMFS_ROOTFS \
+            $WORKDIR/rootfs.cpio.xz 
+    fi
 fi
 
 info "Packing overlayfs"
