@@ -171,6 +171,7 @@ spec:
         compression: "$COMPRESSION_TYPE"
         privileged: $PRIVILEGED
         liveOutput: true
+        backend: $BACKEND
         environment:
         - name: DOCKER_HOST
           value: "$DOCKER_HOST"
@@ -255,6 +256,7 @@ spec:
         tree: $YAML_TREE
         privileged: $PRIVILEGED
         liveOutput: true
+        backend: $BACKEND
         environment:
         - name: DOCKER_HOST
           value: "$DOCKER_HOST"
