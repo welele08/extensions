@@ -41,18 +41,23 @@ PKG_LIST=$(luet tree pkglist $TREE_ARGS -o json)
 COMPRESSION_TYPE=${COMPRESSION_TYPE:-gzip}
 
 prune() {
+    allPacks=()
+    for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
+            PACKAGE_PATH=$(echo "$i" | jq -r ".path")
+            PACKAGE_NAME=$(echo "$i" | jq -r ".name")
+            PACKAGE_CATEGORY=$(echo "$i" | jq -r ".category")
+            PACKAGE_VERSION=$(echo "$i" | jq -r ".version")
+            allPacks+=( "$PACKAGE_NAME\-$PACKAGE_CATEGORY\-$PACKAGE_VERSION" )
+    done
     echo "Pruning old packages from repository"
     for a in $(mc find minio-ci/$BUCKET --regex '.*.package.*|.*.metadata.yaml$' --json |  jq -r '.key' ); do
 
         # For each package in the tree, get the path where the spec resides
         # e.g. packages/acct-group/amavis/0/
-        for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
-            PACKAGE_PATH=$(echo "$i" | jq -r ".path")
-            PACKAGE_NAME=$(echo "$i" | jq -r ".name")
-            PACKAGE_CATEGORY=$(echo "$i" | jq -r ".category")
-            PACKAGE_VERSION=$(echo "$i" | jq -r ".version")
-            if echo $a | grep -q "$PACKAGE_NAME\-$PACKAGE_CATEGORY\-$PACKAGE_VERSION"; then
-                continue 2
+        for t in ${allPacks[@]}; do
+
+            if echo $a | grep -q $t; then
+            continue 2
             fi
         done
 
