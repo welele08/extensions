@@ -37,6 +37,9 @@ export SCRIPT_DIR="${SCRIPT_DIR:-/usr/share/luet-extension/geniso}"
 export SUDO=${SUDO:-}
 export KEEP_LUET_DB=${KEEP_LUET_DB:-false}
 
+export LUET_GENISO_OUTPUT="${LUET_GENISO_OUTPUT:-$WORKDIR/luet_install.log}"
+
+
 umount_rootfs() {
   local rootfs=$1
   #${SUDO} umount -l $rootfs/boot

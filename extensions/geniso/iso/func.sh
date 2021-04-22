@@ -114,7 +114,6 @@ function ok {
     printf "${BGreen}${OK_IMG}${BGreen}${ARROW_IMG} ${BWhite}${On_Black}$message$Color_Off\n"
 }
 
-
 # Misc functions
 
 luet_install() {
@@ -146,12 +145,12 @@ repos_confdir:
 
 EOF
   if [ -n "${repositories}" ]; then
-    echo "Installing repositories ${repositories} in $rootfs, logs available at $WORKDIR/luet_install.log"
-    ${LUET_BIN} install --config "$rootfs/luet.yaml" ${repositories} >> $WORKDIR/luet_install.log 2>&1
+    echo "Installing repositories ${repositories} in $rootfs, logs available at ${LUET_GENISO_OUTPUT}"
+    ${LUET_BIN} install --config "$rootfs/luet.yaml" ${repositories} >> ${LUET_GENISO_OUTPUT} 2>&1
   fi
 
-  echo "Installing packages ${packages} in $rootfs, logs available at $WORKDIR/luet_install.log"
-  ${LUET_BIN} install --config "$rootfs/luet.yaml" ${packages} >> $WORKDIR/luet_install.log 2>&1
+  echo "Installing packages ${packages} in $rootfs, logs available at ${LUET_GENISO_OUTPUT}"
+  ${LUET_BIN} install --config "$rootfs/luet.yaml" ${packages} >> ${LUET_GENISO_OUTPUT} 2>&1
   ${LUET_BIN} cleanup --config "$rootfs/luet.yaml"
 
   if [[ "$keep_db" == "true" ]]; then
