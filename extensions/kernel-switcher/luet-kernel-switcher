@@ -104,7 +104,7 @@ case "$MOCACCINO_RELEASE" in
     if [ $# -eq 0 ]; then
         echo "Generating only initramfs"
     else
-        luet replace $ALL_KERNELS --for "$1" --for "${1/full/}"modules
+        luet replace --nodeps $ALL_KERNELS --for "$1" --for "${1/full/}"modules
     fi
     generate_micro_initramfs
     ;;
@@ -112,7 +112,7 @@ case "$MOCACCINO_RELEASE" in
     if [ $# -eq 0 ]; then
         echo "Nothing to do"
     else
-        luet replace $ALL_KERNELS --for "$1" --for "${1/full/}"modules --for "${1/full/}"initramfs
+        luet replace --nodeps $ALL_KERNELS --for "$1" --for "${1/full/}"modules --for "${1/full/}"initramfs
     fi
     ;;
   "desktop")
@@ -120,7 +120,7 @@ case "$MOCACCINO_RELEASE" in
         echo "Generating only the initramfs image of all available kernels."
 
     else
-        luet replace $ALL_KERNELS --for "$1" --for "${1/full/}"modules
+        luet replace --nodeps $ALL_KERNELS --for "$1" --for "${1/full/}"modules
     fi
     generate_dracut_initramfs
     ;;
