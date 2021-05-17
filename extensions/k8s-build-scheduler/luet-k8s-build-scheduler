@@ -86,7 +86,7 @@ wait_packages() {
         do
             echo "Package $PACKAGE_CATEGORY/$PACKAGE_NAME @ $PACKAGE_VERSION not uploaded yet, sleeping"
             JOB_STATE=$(kubectl get packagebuild -n $NAMESPACE $JOB_NAME -o json | jq -r '.status.state')
-            if [[ "$JOB_STATE" == "Pending" ]]; then
+            if [[ "$JOB_STATE" == "Pending" ]] || [[ "$JOB_STATE" == "Running" ]]; then
                 kubectl logs -f -c spec-build -n $NAMESPACE $JOB_NAME
             fi
             if [[ "$JOB_STATE" == "Failed" ]]; then
@@ -140,7 +140,7 @@ parallel_build() {
 
         if kubectl get pods -n $NAMESPACE $JOB_NAME; then
             JOB_STATE=$(kubectl get packagebuild -n $NAMESPACE $JOB_NAME -o json | jq -r '.status.state')
-            if [[ "$JOB_STATE" == "Pending" ]]; then
+            if [[ "$JOB_STATE" == "Pending" ]] || [[ "$JOB_STATE" == "Running" ]]; then
                 echo "Job for $PACKAGE_NAME already running , skipping"
                 continue
             fi
@@ -224,7 +224,7 @@ smart_build() {
 
             if kubectl get pods -n $NAMESPACE $JOB_NAME; then
                 JOB_STATE=$(kubectl get packagebuild -n $NAMESPACE $JOB_NAME -o json | jq -r '.status.state')
-                if [[ "$JOB_STATE" == "Pending" ]]; then
+                if [[ "$JOB_STATE" == "Pending" ]] || [[ "$JOB_STATE" == "Running" ]]; then
                     echo "Job for $PACKAGE_NAME already running , skipping"
                     continue 1
                 fi
@@ -290,7 +290,7 @@ EOF
             do
                 echo "Package $PACKAGE_CATEGORY/$PACKAGE_NAME @ $PACKAGE_VERSION not uploaded yet, sleeping"
                 JOB_STATE=$(kubectl get packagebuild -n $NAMESPACE $JOB_NAME -o json | jq -r '.status.state')
-                if [[ "$JOB_STATE" == "Pending" ]]; then
+                if [[ "$JOB_STATE" == "Pending" ]] || [[ "$JOB_STATE" == "Running" ]]; then
                     kubectl logs -f -c spec-build -n $NAMESPACE $JOB_NAME
                 fi
                 if [[ "$JOB_STATE" == "Failed" ]]; then
