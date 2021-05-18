@@ -39,6 +39,7 @@ REF=${REF:-}
 NAMESPACE=${NAMESPACE:-}
 PKG_LIST=$(luet tree pkglist $TREE_ARGS -o json)
 COMPRESSION_TYPE=${COMPRESSION_TYPE:-gzip}
+K8S_SCHEDULER=${K8S_SCHEDULER:-}
 
 prune() {
     allPacks=()
@@ -157,6 +158,7 @@ kind: PackageBuild
 metadata:
     name: $JOB_NAME
 spec:
+    podScheduler: "$K8S_SCHEDULER"
     packageName: "$PACKAGE_CATEGORY/$PACKAGE_NAME@$PACKAGE_VERSION"
     repository: 
         url: "https://github.com/${GITHUB_REPO}.git"
@@ -241,6 +243,7 @@ kind: PackageBuild
 metadata:
     name: $JOB_NAME
 spec:
+    podScheduler: "$K8S_SCHEDULER"
     packageName: "$PACKAGE_CATEGORY/$PACKAGE_NAME@$PACKAGE_VERSION"
     repository: 
         url: "https://github.com/${GITHUB_REPO}.git"
