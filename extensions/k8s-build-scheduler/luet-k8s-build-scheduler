@@ -160,7 +160,6 @@ metadata:
 spec:
     annotations:
         k8s-resource-scheduler/burst-protect: "200"
-        k8s-resource-scheduler/cpu-bound: "true"
     podScheduler: "$K8S_SCHEDULER"
     packageName: "$PACKAGE_CATEGORY/$PACKAGE_NAME@$PACKAGE_VERSION"
     repository: 
@@ -248,7 +247,6 @@ metadata:
 spec:
     annotations:
         k8s-resource-scheduler/burst-protect: "200"
-        k8s-resource-scheduler/cpu-bound: "true"
     podScheduler: "$K8S_SCHEDULER"
     packageName: "$PACKAGE_CATEGORY/$PACKAGE_NAME@$PACKAGE_VERSION"
     repository: 
