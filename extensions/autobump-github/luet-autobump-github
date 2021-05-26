@@ -71,6 +71,48 @@ latest_gentoo() {
 # Luet tree package list
 PKG_LIST=$(luet tree pkglist --tree $TREE_DIR -o json)
 
+reverse_bump() {
+    local i="$1"
+    if [ "${AUTO_GIT}" == "true" ]; then
+        git checkout $BRANCH_NAME # Return to bump branch
+    fi
+
+    echo "Revbump for $i"
+    IFS=/ read -a package <<< $i
+    path=$(echo "$PKG_LIST" | jq -r ".packages[] | select(.name==\"${package[1]}\" and .category==\"${package[0]}\").path")
+
+    REVDEPYQ_ARGS=
+    deffile=$path/definition.yaml
+    if [ -e "$path/collection.yaml" ]; then
+        index=$(yq r $path/collection.yaml -j | jq ".packages | map(.name==\"${package[1]}\" and .category==\"${package[0]}\") | index(true)")
+        REVDEPYQ_ARGS="packages[$index]."
+        deffile="$path/collection.yaml"
+    fi
+
+    ver=$(yq r $deffile "${REVDEPYQ_ARGS}version")
+    revver=1
+
+    if [[ $ver =~ "+" ]]; then
+        revver=$(echo "$ver" | cut -d'+' -f 2)
+        revver=$((revver+1))
+    fi
+    ver=${ver%\+*}
+    ver="${ver}+${revver}"
+
+    yq w -i $deffile "${REVDEPYQ_ARGS}version" "$ver"
+
+    if [ "${AUTO_GIT}" == "true" ]; then
+        git add $path/
+        git commit -m "reverse dep: bump $i for $PACKAGE_CATEGORY/$PACKAGE_NAME"
+        git push -f -v origin $BRANCH_NAME
+
+        # Branch is ready now to open PR
+        hub pull-request $HUB_ARGS -m "$(git log -1 --pretty=%B)" -m "$(funnyQuote)"
+
+        git checkout $START_GIT_BRANCH # Return to original branch
+    fi
+}
+
 for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
 
     PACKAGE_PATH=$(echo "$i" | jq -r ".path")
@@ -132,6 +174,9 @@ for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
     ORIGINAL_PACKAGE_CATEGORY=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"original.package.category\"")
     ORIGINAL_PACKAGE_VERSION=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"original.package.version\"")
 
+    # Related packages to revbump regardless of their deptree
+    RELATED_PACKAGES=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"autobump.revbump_related\"")
+
     ## Reading Package labels ends
 
     if [ -z "$ORIGINAL_PACKAGE_NAME" ]; then
@@ -159,9 +204,17 @@ for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
     SNAPSHOT_PREFIX=${AUTOBUMP_REFIX:-0.}
 
     if [[ "$AUTOBUMP_STRATEGY" == "release" ]] && [ -n "${GITHUB_OWNER}" ] && [ -n "${GITHUB_REPO}" ]; then
-        LATEST_TAG=$(curl -H "Authorization: token $TOKEN" https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest -s | jq .tag_name -r)
+        if [ -n "$TOKEN" ]; then
+            LATEST_TAG=$(curl -H "Authorization: token $TOKEN" https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest -s | jq .tag_name -r)
+        else
+            LATEST_TAG=$(curl https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/releases/latest -s | jq .tag_name -r)
+        fi
     elif [[ "$AUTOBUMP_STRATEGY" == "refs" ]] &&  [ -n "${GITHUB_OWNER}" ] && [ -n "${GITHUB_REPO}" ]; then
-        LATEST_TAG=$(curl -H "Authorization: token $TOKEN" https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/git/refs/tags -s | jq '.[].ref | sub("refs\/tags\/"; "") | select(. | test("'$VERSION_CONTAINS'"))' -r | tail -n1 )
+        if [ -n "$TOKEN" ]; then
+            LATEST_TAG=$(curl -H "Authorization: token $TOKEN" https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/git/refs/tags -s | jq '.[].ref | sub("refs\/tags\/"; "") | select(. | test("'$VERSION_CONTAINS'"))' -r | tail -n1 )
+        else
+            LATEST_TAG=$(curl https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/git/refs/tags -s | jq '.[].ref | sub("refs\/tags\/"; "") | select(. | test("'$VERSION_CONTAINS'"))' -r | tail -n1 )
+        fi
     elif [[ "$AUTOBUMP_STRATEGY" == "snapshot" ]] || [[ "$AUTOBUMP_STRATEGY" == "git_hash" ]]; then
         LATEST_TAG=${SNAPSHOT_PREFIX}$(date +%Y%m%d)
     elif [[ "$AUTOBUMP_STRATEGY" == "custom" ]]; then
@@ -181,7 +234,11 @@ for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
     elif [ "${AUTOBUMP_STRATEGY}" == "sabayon" ]; then
         LATEST_TAG=$(latest_sabayon $ORIGINAL_PACKAGE_NAME $ORIGINAL_PACKAGE_CATEGORY)
     elif [ -n "${GITHUB_OWNER}" ] && [ -n "${GITHUB_REPO}" ]; then
-        LATEST_TAG=$(curl -H "Authorization: token $TOKEN" https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/tags -s | jq -r '.[].name | select(. | test("'$VERSION_CONTAINS'"))' -r | head -1 )
+        if [ -n "$TOKEN" ]; then
+            LATEST_TAG=$(curl -H "Authorization: token $TOKEN" https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/tags -s | jq -r '.[].name | select(. | test("'$VERSION_CONTAINS'"))' -r | head -1 )
+        else
+            LATEST_TAG=$(curl https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/tags -s | jq -r '.[].name | select(. | test("'$VERSION_CONTAINS'"))' -r | head -1 )
+        fi
     fi
 
     ORIGINAL_NEW_TAG=${LATEST_TAG}
@@ -252,45 +309,11 @@ for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
 
         if [[ "$AUTOBUMP_REVDEPS" == "true" ]]; then
             for i in $(luet tree pkglist -b -t $TREE_DIR -m $PACKAGE_CATEGORY/$PACKAGE_NAME --revdeps); do
-
-                if [ "${AUTO_GIT}" == "true" ]; then
-                    git checkout $BRANCH_NAME # Return to bump branch
-                fi
-
-                echo "Revbump for $i"
-                IFS=/ read -a package <<< $i
-                path=$(echo "$PKG_LIST" | jq -r ".packages[] | select(.name==\"${package[1]}\" and .category==\"${package[0]}\").path")
-
-                REVDEPYQ_ARGS=
-                deffile=$path/definition.yaml
-                if [ -e "$path/collection.yaml" ]; then
-                    index=$(yq r $path/collection.yaml -j | jq ".packages | map(.name==\"${package[1]}\" and .category==\"${package[0]}\") | index(true)")
-                    REVDEPYQ_ARGS="packages[$index]."
-                    deffile="$path/collection.yaml"
-                fi
-
-                ver=$(yq r $deffile "${REVDEPYQ_ARGS}version")
-                revver=1
-
-                if [[ $ver =~ "+" ]]; then
-                    revver=$(echo "$ver" | cut -d'+' -f 2)
-                    revver=$((revver+1))
-                fi
-                ver=${ver%\+*}
-                ver="${ver}+${revver}"
-     
-                yq w -i $deffile "${REVDEPYQ_ARGS}version" "$ver"
-
-                if [ "${AUTO_GIT}" == "true" ]; then
-                    git add $path/
-                    git commit -m "reverse dep: bump $i for $PACKAGE_CATEGORY/$PACKAGE_NAME"
-                    git push -f -v origin $BRANCH_NAME
-
-                    # Branch is ready now to open PR
-                    hub pull-request $HUB_ARGS -m "$(git log -1 --pretty=%B)" -m "$(funnyQuote)"
-
-                    git checkout $START_GIT_BRANCH # Return to original branch
-                fi
+                reverse_bump "$i"
+            done
+            for i in $RELATED_PACKAGES; do
+                echo "Bumping related package $i"
+                reverse_bump "$i"
             done
         fi
     fi
