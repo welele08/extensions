@@ -157,6 +157,8 @@ apiVersion: luet.k8s.io/v1alpha1
 kind: PackageBuild
 metadata:
     name: $JOB_NAME
+  annotations:
+    luet-k8s.io/retry: "5"
 spec:
     annotations:
         k8s-resource-scheduler/burst-protect: "200"
@@ -244,6 +246,8 @@ apiVersion: luet.k8s.io/v1alpha1
 kind: PackageBuild
 metadata:
     name: $JOB_NAME
+  annotations:
+    luet-k8s.io/retry: "5"
 spec:
     annotations:
         k8s-resource-scheduler/burst-protect: "200"
