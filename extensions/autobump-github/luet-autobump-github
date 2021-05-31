@@ -113,6 +113,36 @@ reverse_bump() {
     fi
 }
 
+template_string() {
+    local def="$1"
+    local string="$2"
+
+    while read -r line
+    do
+        if [ -z "$line" ]; then
+            continue
+        fi
+
+        pieces=($line)
+        key=${pieces[0]}
+        subkey=${pieces[1]}
+
+        if echo $subkey | grep -q "hook"; then
+            continue
+        fi
+
+        if [[ "$subkey" == "null" ]]; then 
+            v=$(yq r $def "$key")
+            string=$(echo "$string" | sed "s/{{.Values.$key}}/$v/g")
+        else 
+            v=$(yq r $def ${key}.\"${subkey}\")
+            string=$(echo "$string" | sed "s/{{.Values.$key.$subkey}}/$v/g")
+        fi
+    done <<< $(yq r $def -j | jq -cr '. as $data |
+    paths(scalars) | . as $path | "\($path[0]) \($path[1]) \($data | getpath($path) | tostring)"')
+    echo $string
+}
+
 for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
 
     PACKAGE_PATH=$(echo "$i" | jq -r ".path")
@@ -176,6 +206,9 @@ for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
 
     # Related packages to revbump regardless of their deptree
     RELATED_PACKAGES=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"autobump.revbump_related\"")
+
+    # Checksum hook
+    CHECKSUM_HOOK=$(yq r $DEFINITION_FILE "${YQ_ARGS}labels.\"autobump.checksum_hook\"")
 
     ## Reading Package labels ends
 
@@ -277,7 +310,7 @@ for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
 
         # Update runtime version
         yq w -i $DEFINITION_FILE "${YQ_ARGS}version" "$LATEST_TAG" --style double
-
+       
         if [ "${AUTOBUMP_STRATEGY}" == "gentoo" ] || [ "${AUTOBUMP_STRATEGY}" == "sabayon" ]; then
             yq w -i $DEFINITION_FILE "${YQ_ARGS}labels.\"original.package.version\"" "$ORIGINAL_NEW_TAG" --style double
             yq w -i $DEFINITION_FILE "${YQ_ARGS}labels.\"original.package.name\"" "$ORIGINAL_PACKAGE_NAME" --style double
@@ -293,6 +326,14 @@ for i in $(echo "$PKG_LIST" | jq -rc '.packages[]'); do
             GIT_BRANCH="${GIT_BRANCH:-master}"
             SHA=$(curl -H "Authorization: token $TOKEN" https://api.github.com/repos/$GITHUB_OWNER/$GITHUB_REPO/git/refs/heads/$GIT_BRANCH -s | jq -r '.object.sha')
             yq w -i $DEFINITION_FILE "${YQ_ARGS}labels.\"git.hash\"" "$SHA" --style double
+        fi
+
+        if [ -n "$CHECKSUM_HOOK" ]; then
+            script=$(template_string "$DEFINITION_FILE" "$CHECKSUM_HOOK")
+            echo "Executing checksum hook $script"
+
+            CHECKSUM=$(eval $script)
+            yq w -i $DEFINITION_FILE "${YQ_ARGS}labels.\"package.checksum\"" "$CHECKSUM" --style double
         fi
 
         if [ "${AUTO_GIT}" == "true" ]; then
