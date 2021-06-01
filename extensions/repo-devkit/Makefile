@@ -9,7 +9,7 @@ override LDFLAGS += -X "github.com/Luet-lab/extensions/extensions/repo-devkit/pk
 all: build install
 
 build:
-	CGO_ENABLED=0 go build -o luet-repo-devkit -ldflags '$(LDFLAGS)'
+	CGO_ENABLED=0 go build -o luet-repo-devkit -ldflags '$(LDFLAGS)' luet-repo-devkit.go
 
 install: build
 	install -d $(DESTDIR)/$(UBINDIR)
