@@ -13,4 +13,4 @@ build:
 
 install: build
 	install -d $(DESTDIR)/$(UBINDIR)
-	install -m 0755 $(EXTNAME) $(DESTDIR)/$(UBINDIR)/
+	install -m 0755 luet-$(EXTNAME) $(DESTDIR)/$(UBINDIR)/
