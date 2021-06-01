@@ -23,4 +23,4 @@ jobs:
     - name: setup-docker
       uses: docker-practice/actions-setup-docker@0.0.1
     - name: Build
-      run: sudo -E env "PATH=$PATH" make build
+      run: sudo -E env "PATH=$PATH" make build && make install
