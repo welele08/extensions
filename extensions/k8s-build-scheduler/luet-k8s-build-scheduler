@@ -40,6 +40,7 @@ NAMESPACE=${NAMESPACE:-}
 PKG_LIST=$(luet tree pkglist $TREE_ARGS -o json)
 COMPRESSION_TYPE=${COMPRESSION_TYPE:-gzip}
 K8S_SCHEDULER=${K8S_SCHEDULER:-}
+NODE_SELECTOR=${NODE_SELECTOR:-}
 
 prune() {
     allPacks=()
@@ -162,6 +163,8 @@ metadata:
 spec:
     annotations:
         k8s-resource-scheduler/burst-protect: "200"
+    nodeSelector:
+        $NODE_SELECTOR
     podScheduler: "$K8S_SCHEDULER"
     packageName: "$PACKAGE_CATEGORY/$PACKAGE_NAME@$PACKAGE_VERSION"
     repository: 
@@ -249,6 +252,8 @@ metadata:
     annotations:
       luet-k8s.io/retry: "5"
 spec:
+    nodeSelector:
+        $NODE_SELECTOR
     annotations:
         k8s-resource-scheduler/burst-protect: "200"
     podScheduler: "$K8S_SCHEDULER"
