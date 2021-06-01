@@ -78,6 +78,7 @@ func Execute() {
 
 	rootCmd.AddCommand(
 		devkitcmd.NewCleanCommand(),
+		devkitcmd.NewPkgsCommand(),
 	)
 
 	if err := rootCmd.Execute(); err != nil {

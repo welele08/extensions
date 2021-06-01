@@ -19,14 +19,20 @@ package specs
 
 import (
 	artifact "github.com/mudler/luet/pkg/compiler/types/artifact"
+	luet_pkg "github.com/mudler/luet/pkg/package"
 )
 
 type LuetRDConfig struct {
 	Cleaner LuetRDCCleaner `json:"cleaner,omitempty" yaml:"cleaner,omitempty"`
+	List    LuetRDCList    `json:"list,omitempty" yaml:"list,omitempty"`
 }
 
 type LuetRDCCleaner struct {
 	Excludes []string `json:"excludes,omitempty" yaml:"excludes,omitempty"`
+}
+
+type LuetRDCList struct {
+	ExcludePkgs luet_pkg.DefaultPackage `json:"exclude_pkgs,omitempty" yaml"exclude_pkgs,omitempty"`
 }
 
 type RepoBackendHandler interface {

@@ -19,26 +19,40 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 
 	devkit "github.com/Luet-lab/extensions/extensions/repo-devkit/pkg/devkit"
 	specs "github.com/Luet-lab/extensions/extensions/repo-devkit/pkg/specs"
 
+	luet_pkg "github.com/mudler/luet/pkg/package"
 	cobra "github.com/spf13/cobra"
 )
 
-func NewCleanCommand() *cobra.Command {
+func NewPkgsCommand() *cobra.Command {
 	var cmd = &cobra.Command{
-		Use:   "clean [OPTIONS]",
-		Short: "Clean repository files.",
+		Use:   "pkgs [OPTIONS]",
+		Short: "Show packages availables or missings from repository.",
 		PreRun: func(cmd *cobra.Command, args []string) {
 			treePath, _ := cmd.Flags().GetStringArray("tree")
+			listAvailables, _ := cmd.Flags().GetBool("availables")
+			listMissings, _ := cmd.Flags().GetBool("missings")
 
 			if len(treePath) == 0 {
 				fmt.Println("At least one tree path is needed.")
 				os.Exit(1)
 			}
+
+			if (listAvailables && listMissings) ||
+				(!listAvailables && !listMissings) {
+				fmt.Println(
+					"It's needed enable or the --availables or --missings options.",
+				)
+				os.Exit(1)
+			}
+
 		},
 		Run: func(cmd *cobra.Command, args []string) {
 			var s *specs.LuetRDConfig
@@ -48,11 +62,13 @@ func NewCleanCommand() *cobra.Command {
 			backend, _ := cmd.Flags().GetString("backend")
 			path, _ := cmd.Flags().GetString("path")
 			treePath, _ := cmd.Flags().GetStringArray("tree")
-			dryRun, _ := cmd.Flags().GetBool("dry-run")
+			listAvailables, _ := cmd.Flags().GetBool("availables")
+			listMissings, _ := cmd.Flags().GetBool("missings")
 			mottainaiProfile, _ := cmd.Flags().GetString("mottainai-profile")
 			mottainaiMaster, _ := cmd.Flags().GetString("mottainai-master")
 			mottainaiApiKey, _ := cmd.Flags().GetString("mottainai-apikey")
 			mottainaiNamespace, _ := cmd.Flags().GetString("mottainai-namespace")
+			jsonOutput, _ := cmd.Flags().GetBool("json")
 
 			if specsFile == "" {
 				s = specs.NewLuetRDConfig()
@@ -80,39 +96,67 @@ func NewCleanCommand() *cobra.Command {
 				}
 			}
 
-			repoCleaner, err := devkit.NewRepoCleaner(s, backend, path, opts, dryRun)
+			repoList, err := devkit.NewRepoList(s, backend, path, opts)
 			if err != nil {
-				fmt.Println("Error on initialize repo cleaner: " + err.Error())
+				fmt.Println("Error on initialize repo list: " + err.Error())
 				os.Exit(1)
 			}
 
-			repoCleaner.Verbose = true
-
 			// Loading tree in memory
-			err = repoCleaner.LoadTrees(treePath)
+			err = repoList.LoadTrees(treePath)
 			if err != nil {
 				fmt.Println("Erro on loading trees: " + err.Error())
 				os.Exit(1)
 			}
 
-			err = repoCleaner.Run()
-			if err != nil {
-				fmt.Println("Error on clean repository: " + err.Error())
-				os.Exit(1)
+			var list []*luet_pkg.DefaultPackage
+
+			if listAvailables {
+				list, err = repoList.ListPkgsAvailable()
+				if err != nil {
+					fmt.Println("Error on retrieve availabile pkgs: " + err.Error())
+					os.Exit(1)
+				}
+
+			} else if listMissings {
+				list, err = repoList.ListPkgsMissing()
+				if err != nil {
+					fmt.Println("Error on retrieve missings pkgs: " + err.Error())
+					os.Exit(1)
+				}
+
 			}
 
-			fmt.Println("All done.")
+			if jsonOutput {
+
+				data, _ := json.Marshal(list)
+				fmt.Println(string(data))
+			} else {
+				orderString := []string{}
+				for _, p := range list {
+					orderString = append(orderString, p.HumanReadableString())
+				}
+
+				sort.Strings(orderString)
+
+				for _, p := range orderString {
+					fmt.Println(p)
+				}
+			}
+
 		},
 	}
 
 	var flags = cmd.Flags()
 	flags.StringP("backend", "b", "local", "Select backend repository: local|mottainai.")
 	flags.StringP("path", "p", "", "Path of the repository artefacts.")
-	flags.Bool("dry-run", false, "Only check files to remove.")
 	flags.String("mottainai-profile", "", "Set mottainai profile to use.")
 	flags.String("mottainai-master", "", "Set mottainai Server to use.")
 	flags.String("mottainai-apikey", "", "Set mottainai API Key to use.")
 	flags.String("mottainai-namespace", "", "Set mottainai namespace to use.")
+	flags.Bool("availables", false, "Show list of available packages.")
+	flags.Bool("missings", false, "Show list of missing packages.")
+	flags.Bool("json", false, "Show packages in JSON format.")
 
 	return cmd
 }
