@@ -21,4 +21,4 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Build
-      run: sudo -E env "PATH=$PATH" make build
+      run: sudo -E env "PATH=$PATH" make install
