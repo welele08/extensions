@@ -16,6 +16,7 @@ require (
 	github.com/MottainaiCI/mottainai-server v0.0.2-0.20210531211337-27f12a56ea5f
 	github.com/geaaru/time-master v0.3.0
 	github.com/googleapis/gnostic v0.3.0 // indirect
+	github.com/minio/minio-go/v7 v7.0.10
 	github.com/mudler/luet v0.0.0-20210525125555-56e9c6f82ecb
 	github.com/spf13/cobra v1.1.3
 	gopkg.in/yaml.v2 v2.4.0

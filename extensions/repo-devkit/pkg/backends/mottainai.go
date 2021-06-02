@@ -145,6 +145,7 @@ func NewBackendMottainai(specs *specs.LuetRDConfig, path string, opts map[string
 	}
 
 	ans := &BackendMottainai{
+		Specs:        specs,
 		ArtefactPath: path,
 		Config:       config,
 		MottainaiClient: client.NewTokenClient(

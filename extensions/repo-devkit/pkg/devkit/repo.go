@@ -39,10 +39,11 @@ type RepoKnife struct {
 	BackendHandler specs.RepoBackendHandler
 	ReciperRuntime luet_tree.Builder
 
-	PkgsMap      map[string]string
-	MetaMap      map[string]*artifact.PackageArtifact
-	Files2Remove []string
-	Verbose      bool
+	PkgsMap        map[string]string
+	MetaMap        map[string]*artifact.PackageArtifact
+	Files2Remove   []string
+	Verbose        bool
+	ProcessedFiles int
 }
 
 func NewRepoKnife(s *specs.LuetRDConfig,
@@ -62,6 +63,8 @@ func NewRepoKnife(s *specs.LuetRDConfig,
 		handler, err = backends.NewBackendLocal(s, path)
 	case "mottainai":
 		handler, err = backends.NewBackendMottainai(s, path, opts)
+	case "minio":
+		handler, err = backends.NewBackendMinio(s, path, opts)
 	default:
 		return nil, errors.New("Invalid backend")
 	}
@@ -103,6 +106,7 @@ func (c *RepoKnife) Analyze() error {
 	if err != nil {
 		return err
 	}
+	c.ProcessedFiles = len(files)
 
 	if c.Specs.GetCleaner().HasExcludes() {
 		files, err = c.GetFilteredList(files)
