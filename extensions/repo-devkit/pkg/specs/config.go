@@ -19,8 +19,12 @@ package specs
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 
+	. "github.com/mudler/luet/pkg/logger"
+	luet_pkg "github.com/mudler/luet/pkg/package"
+	luet_version "github.com/mudler/luet/pkg/versioner"
 	"gopkg.in/yaml.v2"
 )
 
@@ -33,9 +37,64 @@ func NewLuetRDConfig() *LuetRDConfig {
 }
 
 func (c *LuetRDConfig) GetCleaner() *LuetRDCCleaner { return &c.Cleaner }
+func (c *LuetRDConfig) GetList() *LuetRDCList       { return &c.List }
 
 func (c *LuetRDCCleaner) HasExcludes() bool {
 	return len(c.Excludes) > 0
+}
+
+func (c *LuetRDCList) HasFilters() bool {
+	return len(c.ExcludePkgs) > 0
+}
+
+func (c *LuetPackage) GetName() string     { return c.Name }
+func (c *LuetPackage) GetCategory() string { return c.Category }
+func (c *LuetPackage) GetVersion() string  { return c.Version }
+func (p *LuetPackage) HumanReadableString() string {
+	return fmt.Sprintf("%s/%s-%s", p.Category, p.Name, p.Version)
+}
+
+func (c *LuetRDCList) ToIgnore(pkg *luet_pkg.DefaultPackage) bool {
+	ans := false
+
+	if c.HasFilters() {
+		pSelector, err := luet_version.ParseVersion(pkg.GetVersion())
+		if err != nil {
+			Warning(fmt.Sprintf(
+				"Error on create package selector for package %s: %s",
+				pkg.HumanReadableString(), err.Error()))
+			return true
+		}
+
+		for _, f := range c.ExcludePkgs {
+			if f.GetName() != pkg.GetName() ||
+				f.GetCategory() != pkg.GetCategory() {
+				continue
+			}
+
+			selector, err := luet_version.ParseVersion(f.GetVersion())
+			if err != nil {
+				Warning(fmt.Sprintf(
+					"Error on create version selector for package %s: %s",
+					f.HumanReadableString(), err.Error()))
+				continue
+			}
+
+			admit, err := luet_version.PackageAdmit(selector, pSelector)
+			if err != nil {
+				Warning(fmt.Sprintf("Error on check package %s: %s",
+					f.HumanReadableString(), err.Error()))
+				continue
+			}
+
+			if admit {
+				ans = true
+			}
+
+		}
+	}
+
+	return ans
 }
 
 func SpecsFromYaml(data []byte) (*LuetRDConfig, error) {

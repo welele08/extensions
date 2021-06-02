@@ -80,7 +80,13 @@ func (c *RepoList) ListPkgsMissing() ([]*luet_pkg.DefaultPackage, error) {
 
 		DebugC(fmt.Sprintf("Checking %s", p.HumanReadableString()))
 		if _, ok := mPkgs[p.HumanReadableString()]; !ok {
-			ans = append(ans, p.(*luet_pkg.DefaultPackage))
+
+			if c.Specs.List.ToIgnore(p.(*luet_pkg.DefaultPackage)) {
+				Debug("Ignoring package %s", p.HumanReadableString())
+				continue
+			} else {
+				ans = append(ans, p.(*luet_pkg.DefaultPackage))
+			}
 		}
 	}
 
