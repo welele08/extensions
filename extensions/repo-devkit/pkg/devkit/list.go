@@ -98,7 +98,7 @@ func (c *RepoList) ListPkgsMissing() ([]*luet_pkg.DefaultPackage, error) {
 	return ans, nil
 }
 
-func (c *RepoList) ListPkgsMissingByDeps(treePaths []string) ([]*luet_pkg.DefaultPackage, error) {
+func (c *RepoList) ListPkgsMissingByDeps(treePaths []string, withResolve bool) ([]*luet_pkg.DefaultPackage, error) {
 	ans := []*luet_pkg.DefaultPackage{}
 	reciperBuild := luet_tree.NewCompilerRecipe(luet_pkg.NewInMemoryDatabase(false))
 
@@ -138,7 +138,9 @@ func (c *RepoList) ListPkgsMissingByDeps(treePaths []string) ([]*luet_pkg.Defaul
 			)
 		}
 
-		mMissings[p.HumanReadableString()] = r.(*luet_pkg.DefaultPackage)
+		// TODO: R is with broken requires!!!
+		//mMissings[p.HumanReadableString()] = r.(*luet_pkg.DefaultPackage)
+		mMissings[p.HumanReadableString()] = list[idx]
 		pList = append(pList, r)
 	}
 
@@ -162,6 +164,11 @@ func (c *RepoList) ListPkgsMissingByDeps(treePaths []string) ([]*luet_pkg.Defaul
 		pc.Stage4LevelsDumpWrapper(worker.Levels, "")
 	}
 
+	if withResolve {
+		pc.Stage4AlignLevel1(&worker)
+		worker.Levels.Resolve()
+	}
+
 	ans = c.retrieveMissingOrdered(&worker, mMissings)
 
 	return ans, nil
@@ -172,22 +179,29 @@ func (c *RepoList) retrieveMissingOrdered(w *converter.Stage4Worker, missings ma
 	ans := []*luet_pkg.DefaultPackage{}
 	processedDeps := make(map[string]bool, 0)
 
+	// TODO: Check why we have leaf with version >=0
+	// Temporary workaround that handle missing package with cat/pkg
+	for _, v := range missings {
+		missings[fmt.Sprintf("%s/%s", v.GetCategory(), v.GetName())] = v
+	}
+
 	for i := len(w.Levels.Levels) - 1; i >= 0; i-- {
 
-		for _, leaf := range w.Levels.Levels[i].Map {
+		for _, dep := range w.Levels.Levels[i].Deps {
 
-			if _, ok := processedDeps[leaf.Package.HumanReadableString()]; !ok {
+			key := fmt.Sprintf("%s/%s", dep.GetCategory(), dep.GetName())
+			if _, ok := processedDeps[key]; !ok {
 
 				// Check if the package is one of the package missing
-				if _, ok := missings[leaf.Package.HumanReadableString()]; ok {
+				if v, ok := missings[key]; ok {
 
 					// Package to build
-					ans = append(ans, leaf.Package)
+					ans = append(ans, v)
 
 				}
 
 				// Add the package to the processed map
-				processedDeps[leaf.Package.HumanReadableString()] = true
+				processedDeps[key] = true
 
 			}
 

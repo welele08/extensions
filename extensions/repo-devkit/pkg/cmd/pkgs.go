@@ -66,6 +66,7 @@ func NewPkgsCommand() *cobra.Command {
 			listAvailables, _ := cmd.Flags().GetBool("availables")
 			listMissings, _ := cmd.Flags().GetBool("missings")
 			buildOrder, _ := cmd.Flags().GetBool("build-ordered")
+			buildOrderWithResolve, _ := cmd.Flags().GetBool("build-ordered-with-resolve")
 
 			mottainaiProfile, _ := cmd.Flags().GetString("mottainai-profile")
 			mottainaiMaster, _ := cmd.Flags().GetString("mottainai-master")
@@ -158,7 +159,7 @@ func NewPkgsCommand() *cobra.Command {
 
 			} else if listMissings {
 				if buildOrder {
-					list, err = repoList.ListPkgsMissingByDeps(treePath)
+					list, err = repoList.ListPkgsMissingByDeps(treePath, buildOrderWithResolve)
 				} else {
 					list, err = repoList.ListPkgsMissing()
 				}
@@ -184,7 +185,9 @@ func NewPkgsCommand() *cobra.Command {
 					orderString = append(orderString, p.HumanReadableString())
 				}
 
-				sort.Strings(orderString)
+				if !buildOrder {
+					sort.Strings(orderString)
+				}
 
 				for _, p := range orderString {
 					fmt.Println(p)
@@ -214,6 +217,8 @@ func NewPkgsCommand() *cobra.Command {
 	flags.Bool("missings", false, "Show list of missing packages.")
 	flags.Bool("build-ordered", false,
 		"Show list of missing packages with a build order. To use with --missings.")
+	flags.Bool("build-ordered-with-resolve", false,
+		"Use stage4 tree resolving. Slow. To use with --build-ordered.")
 	flags.Bool("json", false, "Show packages in JSON format.")
 
 	return cmd
