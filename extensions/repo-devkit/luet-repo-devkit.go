@@ -70,11 +70,18 @@ func Execute() {
 				fmt.Println("Error on setup luet config/logger: " + err.Error())
 				os.Exit(1)
 			}
+
+			debug, _ := cmd.Flags().GetBool("debug")
+			if debug {
+				LuetCfg.GetGeneral().Debug = true
+			}
+
 		},
 	}
 
 	rootCmd.PersistentFlags().StringArrayP("tree", "t", []string{}, "Path of the tree to use.")
 	rootCmd.PersistentFlags().StringP("specs-file", "s", "", "Path of the devkit specification file.")
+	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Enable debug logging.")
 
 	rootCmd.AddCommand(
 		devkitcmd.NewCleanCommand(),
