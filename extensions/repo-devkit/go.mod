@@ -13,11 +13,17 @@ replace github.com/jaguilar/vt100 => github.com/tonistiigi/vt100 v0.0.0-20190402
 replace github.com/opencontainers/runc => github.com/opencontainers/runc v1.0.0-rc9.0.20200221051241-688cf6d43cc4
 
 require (
+	github.com/Luet-lab/luet-portage-converter v0.4.2-0.20210614150425-70a86a40c9d7
 	github.com/MottainaiCI/mottainai-server v0.0.2-0.20210531211337-27f12a56ea5f
-	github.com/geaaru/time-master v0.3.0
-	github.com/googleapis/gnostic v0.3.0 // indirect
+	github.com/geaaru/time-master v0.3.1
+	github.com/jaypipes/ghw v0.6.1 // indirect
 	github.com/minio/minio-go/v7 v7.0.10
-	github.com/mudler/luet v0.0.0-20210525125555-56e9c6f82ecb
+	github.com/mitchellh/hashstructure/v2 v2.0.1 // indirect
+	github.com/mudler/luet v0.0.0-20210604142351-a7b4ae67c9b8
+	github.com/rickb777/date v1.13.0 // indirect
 	github.com/spf13/cobra v1.1.3
+	github.com/stevenle/topsort v0.0.0-20130922064739-8130c1d7596b // indirect
+	gopkg.in/src-d/go-git.v4 v4.13.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0
+	mvdan.cc/sh/v3 v3.0.0-beta1 // indirect
 )

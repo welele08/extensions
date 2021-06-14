@@ -28,6 +28,7 @@ import (
 	specs "github.com/Luet-lab/extensions/extensions/repo-devkit/pkg/specs"
 
 	luet_pkg "github.com/mudler/luet/pkg/package"
+	luet_spectooling "github.com/mudler/luet/pkg/spectooling"
 	cobra "github.com/spf13/cobra"
 )
 
@@ -64,6 +65,8 @@ func NewPkgsCommand() *cobra.Command {
 			treePath, _ := cmd.Flags().GetStringArray("tree")
 			listAvailables, _ := cmd.Flags().GetBool("availables")
 			listMissings, _ := cmd.Flags().GetBool("missings")
+			buildOrder, _ := cmd.Flags().GetBool("build-ordered")
+
 			mottainaiProfile, _ := cmd.Flags().GetString("mottainai-profile")
 			mottainaiMaster, _ := cmd.Flags().GetString("mottainai-master")
 			mottainaiApiKey, _ := cmd.Flags().GetString("mottainai-apikey")
@@ -154,17 +157,26 @@ func NewPkgsCommand() *cobra.Command {
 				}
 
 			} else if listMissings {
-				list, err = repoList.ListPkgsMissing()
+				if buildOrder {
+					list, err = repoList.ListPkgsMissingByDeps(treePath)
+				} else {
+					list, err = repoList.ListPkgsMissing()
+				}
+
 				if err != nil {
 					fmt.Println("Error on retrieve missings pkgs: " + err.Error())
 					os.Exit(1)
 				}
-
 			}
 
 			if jsonOutput {
 
-				data, _ := json.Marshal(list)
+				listSanitized := []*luet_spectooling.DefaultPackageSanitized{}
+				for _, p := range list {
+					listSanitized = append(listSanitized, luet_spectooling.NewDefaultPackageSanitized(p))
+				}
+				// Convert object in sanitized object
+				data, _ := json.Marshal(listSanitized)
 				fmt.Println(string(data))
 			} else {
 				orderString := []string{}
@@ -200,6 +212,8 @@ func NewPkgsCommand() *cobra.Command {
 	flags.String("minio-region", "", "Optinally define the minio region.")
 	flags.Bool("availables", false, "Show list of available packages.")
 	flags.Bool("missings", false, "Show list of missing packages.")
+	flags.Bool("build-ordered", false,
+		"Show list of missing packages with a build order. To use with --missings.")
 	flags.Bool("json", false, "Show packages in JSON format.")
 
 	return cmd

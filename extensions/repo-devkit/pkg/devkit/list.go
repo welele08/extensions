@@ -19,11 +19,16 @@ along with this program. If not, see <http://www.gnu.org/licenses/>.
 package devkit
 
 import (
+	"errors"
 	"fmt"
 
 	specs "github.com/Luet-lab/extensions/extensions/repo-devkit/pkg/specs"
+
+	"github.com/Luet-lab/luet-portage-converter/pkg/converter"
+	. "github.com/mudler/luet/pkg/config"
 	. "github.com/mudler/luet/pkg/logger"
 	luet_pkg "github.com/mudler/luet/pkg/package"
+	luet_tree "github.com/mudler/luet/pkg/tree"
 )
 
 type RepoList struct {
@@ -91,4 +96,104 @@ func (c *RepoList) ListPkgsMissing() ([]*luet_pkg.DefaultPackage, error) {
 	}
 
 	return ans, nil
+}
+
+func (c *RepoList) ListPkgsMissingByDeps(treePaths []string) ([]*luet_pkg.DefaultPackage, error) {
+	ans := []*luet_pkg.DefaultPackage{}
+	reciperBuild := luet_tree.NewCompilerRecipe(luet_pkg.NewInMemoryDatabase(false))
+
+	list, err := c.ListPkgsMissing()
+	if err != nil {
+		return list, err
+	}
+
+	pc := converter.NewPortageConverter("", "repoman")
+
+	// Load ReciperBuildtime
+	for _, t := range treePaths {
+		if c.Verbose {
+			InfoC(fmt.Sprintf(":evergreen_tree: Loading tree %s...", t))
+		} else {
+			DebugC(fmt.Sprintf(":evergreen_tree: Loading tree %s...", t))
+		}
+		err := reciperBuild.Load(t)
+		if err != nil {
+			return ans, errors.New("Error on load tree" + err.Error())
+		}
+	}
+
+	// Using local load of the three to reduce log verbosity.
+	pc.ReciperBuild = reciperBuild
+	pc.TreePaths = treePaths
+
+	// Create a map of the packages
+	mMissings := make(map[string]*luet_pkg.DefaultPackage, 0)
+	pList := []luet_pkg.Package{}
+	for idx, p := range list {
+
+		r, err := reciperBuild.GetDatabase().FindPackage(list[idx])
+		if err != nil {
+			return ans, errors.New(
+				fmt.Sprintf("Error on resolve package %s", p.HumanReadableString()),
+			)
+		}
+
+		mMissings[p.HumanReadableString()] = r.(*luet_pkg.DefaultPackage)
+		pList = append(pList, r)
+	}
+
+	// Create stage4 worker
+	worker := converter.Stage4Worker{
+		Levels:  converter.NewStage4LevelsWithSize(1),
+		Map:     make(map[string]*luet_pkg.DefaultPackage, 0),
+		Changed: make(map[string]*luet_pkg.DefaultPackage, 0),
+	}
+
+	for _, p := range pList {
+		err := pc.Stage4AddDeps2Levels(p.(*luet_pkg.DefaultPackage),
+			nil, &worker, 1, []string{},
+		)
+		if err != nil {
+			return ans, errors.New("Error on initialize stage4 tree: " + err.Error())
+		}
+	}
+
+	if LuetCfg.GetGeneral().Debug {
+		pc.Stage4LevelsDumpWrapper(worker.Levels, "")
+	}
+
+	ans = c.retrieveMissingOrdered(&worker, mMissings)
+
+	return ans, nil
+}
+
+func (c *RepoList) retrieveMissingOrdered(w *converter.Stage4Worker, missings map[string]*luet_pkg.DefaultPackage) []*luet_pkg.DefaultPackage {
+
+	ans := []*luet_pkg.DefaultPackage{}
+	processedDeps := make(map[string]bool, 0)
+
+	for i := len(w.Levels.Levels) - 1; i >= 0; i-- {
+
+		for _, leaf := range w.Levels.Levels[i].Map {
+
+			if _, ok := processedDeps[leaf.Package.HumanReadableString()]; !ok {
+
+				// Check if the package is one of the package missing
+				if _, ok := missings[leaf.Package.HumanReadableString()]; ok {
+
+					// Package to build
+					ans = append(ans, leaf.Package)
+
+				}
+
+				// Add the package to the processed map
+				processedDeps[leaf.Package.HumanReadableString()] = true
+
+			}
+
+		}
+
+	}
+
+	return ans
 }
