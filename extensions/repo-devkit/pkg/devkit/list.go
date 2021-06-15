@@ -151,6 +151,9 @@ func (c *RepoList) ListPkgsMissingByDeps(treePaths []string, withResolve bool) (
 		Changed: make(map[string]*luet_pkg.DefaultPackage, 0),
 	}
 
+	// Quiet output
+	worker.Levels.Quiet = true
+
 	for _, p := range pList {
 		err := pc.Stage4AddDeps2Levels(p.(*luet_pkg.DefaultPackage),
 			nil, &worker, 1, []string{},
