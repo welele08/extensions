@@ -14,6 +14,7 @@ LUET_PORTAGE_TMPDIR=${LUET_PORTAGE_TMPDIR:-/luet-extract}
 LUET_PORTAGE_CACHE_PACKAGES=${LUET_PORTAGE_CACHE_PACKAGES:-/var/cache/portage/packages}
 LUET_PORTAGE_QUICKPKG_OPTS=${LUET_PORTAGE_QUICKPKG_OPTS:---include-config=y}
 LUET_PORTAGE_IGNORE_TAR_WARNING=${LUET_PORTAGE_IGNORE_TAR_WARNING:-0}
+LUET_PORTAGE_CLEANUP=${LUET_PORTAGE_CLEANUP:-1}
 
 summary () {
   echo "luet-portage params:
@@ -63,7 +64,9 @@ extract_pkg_files () {
   mkdir -p ${LUET_PORTAGE_TARGETDIR} || true
   qtbz2 -d ${LUET_PORTAGE_TMPDIR} ${LUET_PORTAGE_CACHE_PACKAGES}/${cat}/${name}-${version}${vsuffix}.tbz2 || return 1
 
-  ls -l ${LUET_PORTAGE_TMPDIR}
+  if [ "${QUIET}" != "1" ] ; then
+    ls -l ${LUET_PORTAGE_TMPDIR}
+  fi
 
   tar xvjf ${LUET_PORTAGE_TMPDIR}/${name}-${version}${vsuffix}.tar.bz2 \
     -C ${LUET_PORTAGE_TARGETDIR} || {
@@ -289,6 +292,10 @@ Available options:
   extract || return 1
 
   rm -rf ${LUET_PORTAGE_TMPDIR} || true
+
+  if [ "${LUET_PORTAGE_CLEANUP}" != "0" ] ; then
+    rm -rf ${LUET_PORTAGE_CACHE_PACKAGES}/* || true
+  fi
 
   return 0
 }
