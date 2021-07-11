@@ -206,7 +206,7 @@ smart_build() {
     local PACKS=$1
 
     echo "Computing build sequence for: $PACKS"
-    BUILDSEQUENCE=$(FORMAT=json luet parallel-tools-commondeps $PACKS)
+    BUILDSEQUENCE=$(FORMAT=json luet-parallel-tools-commondeps $PACKS)
 
     echo "Build sequence: $BUILDSEQUENCE"
 
