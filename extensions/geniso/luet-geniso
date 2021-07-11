@@ -36,19 +36,10 @@ export INITRAMFS_ROOTFS="${INITRAMFS_ROOTFS:-}"
 export SCRIPT_DIR="${SCRIPT_DIR:-/usr/share/luet-extension/geniso}"
 export SUDO=${SUDO:-}
 export KEEP_LUET_DB=${KEEP_LUET_DB:-false}
+export CA_CERTIFICATES=${CA_CERTIFICATES:-/etc/ssl/certs/ca-certificates.crt}
 
 export LUET_GENISO_OUTPUT="${LUET_GENISO_OUTPUT:-$WORKDIR/luet_install.log}"
 
-
-umount_rootfs() {
-  local rootfs=$1
-  #${SUDO} umount -l $rootfs/boot
-
-  ${SUDO} umount -l $rootfs/dev/pts > /dev/null 2>&1 || true
-  ${SUDO} umount -l $rootfs/dev/ > /dev/null 2>&1 || true
-  ${SUDO} umount -l $rootfs/sys/ > /dev/null 2>&1 || true
-  ${SUDO} umount -l $rootfs/proc/  > /dev/null 2>&1 || true
-}
 
 trap cleanup 1 2 3 6 EXIT
 
