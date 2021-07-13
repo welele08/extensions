@@ -149,7 +149,6 @@ luet_install() {
   cat <<EOF > "$rootfs/luet.yaml"
 system:
   rootfs: "/"
-  database_path: "/luetdb"
   database_engine: "boltdb"
 repos_confdir:
   - /etc/luet/repos.conf.d
@@ -193,16 +192,9 @@ EOF
   ${SUDO} chroot . /luet install --config /luet.yaml ${packages} >> ${LUET_GENISO_OUTPUT} 2>&1
   ${SUDO} chroot . /luet cleanup --config /luet.yaml
 
-  if [[ "$keep_db" == "true" ]]; then
-    # Keep db and move it to luet default
-    mkdir -p "$rootfs/var/luet" || true
-    if [ -d "$rootfs/var/luet/db" ]; then
-      rm -rf "$rootfs/var/luet/db"
-    fi
-    mv "$rootfs/luetdb" "$rootfs/var/luet/db"
-    rm -rf "$rootfs/etc/luet/repos.conf.d"
-  else
-    rm -rf "$rootfs/luetdb"
+  if [[ "$keep_db" != "true" ]]; then
+    rm -rf "$rootfs/var/luet/"
+    rm -rf "$rootfs/etc/luet/repos.conf.d/"
   fi
 
   # Cleanup/umount
