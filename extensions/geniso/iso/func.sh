@@ -242,7 +242,7 @@ run_hook() {
   cp -vf ${script} "$rootfs/hook.sh"
   chmod a+x "${rootfs}/hook.sh"
 
-  echo "Installing packages ${packages} in $rootfs, logs available at ${LUET_GENISO_OUTPUT}"
+  echo "Run hook ${script} in $rootfs, logs available at ${LUET_GENISO_OUTPUT}"
   ${SUDO} chroot . /bin/sh -c /hook.sh >> ${LUET_GENISO_OUTPUT} 2>&1
 
   rm -v $rootfs/hook.sh
