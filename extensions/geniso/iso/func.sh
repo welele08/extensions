@@ -206,3 +206,53 @@ EOF
 
   popd
 }
+
+run_hook() {
+  local rootfs=$1
+  local script=$2
+
+  if [ ! -f "${script}" ] ; then
+    err "ERROR: Hook script ${script} not found!"
+    exit 1
+  fi
+
+  # Create a valid FS structure in order to boot
+  # we shouldn't really care to do this here, but let packages instead create those on need.
+  # we do this here just for safety (who on earth would create a non-bootable ISO?)
+  for d in "/dev" "/sys" "/proc" "/tmp" "/dev/pt" "/run" "/var/lock" "/luetdb" "/etc"; do
+    mkdir -p ${rootfs}${d} || true
+  done
+
+  ${SUDO} mount --bind /dev $rootfs/dev/
+  ${SUDO} mount --bind /sys $rootfs/sys/
+  ${SUDO} mount --bind /proc $rootfs/proc/
+  ${SUDO} mount --bind /dev/pts $rootfs/dev/pts
+
+  pushd ${rootfs}
+
+  # Required to connect to remote repositories
+  if [ ! -f "etc/resolv.conf" ]; then
+    echo "nameserver 8.8.8.8" > etc/resolv.conf
+  fi
+  if [ ! -f "etc/ssl/certs/ca-certificates.crt" ]; then
+    mkdir -p etc/ssl/certs
+    cp -rfv "${CA_CERTIFICATES}" etc/ssl/certs
+  fi
+
+  cp -vf ${script} "$rootfs/hook.sh"
+  chmod a+x "${rootfs}/hook.sh"
+
+  echo "Installing packages ${packages} in $rootfs, logs available at ${LUET_GENISO_OUTPUT}"
+  ${SUDO} chroot . /bin/sh -c /hook.sh >> ${LUET_GENISO_OUTPUT} 2>&1
+
+  rm -v $rootfs/hook.sh
+
+  # Cleanup/umount
+  umount_rootfs $rootfs
+
+  rm $rootfs/luet
+
+  popd
+}
+
+

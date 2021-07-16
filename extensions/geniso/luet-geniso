@@ -49,6 +49,15 @@ cleanup()
    umount_rootfs  "$OVERLAY_DIR"
 }
 
+run_hooks()
+{
+  if [ -n "${OVERLAY_HOOKS}" ] ; then
+    for script in ${OVERLAY_HOOKS}; do
+      run_hook "${OVERLAY_DIR}" "${script}"
+    done
+  fi
+}
+
 cleanup
 
 if [[ "$GEN_ROOTFS" == true ]]; then
@@ -68,6 +77,8 @@ if [[ "$GEN_ROOTFS" == true ]]; then
       luet_install "$ROOTFS_DIR" "${FIRST_STAGE}" "${LUET_INITRAMFS_REPOS}"
     fi
     luet_install "$OVERLAY_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}" "${KEEP_LUET_DB}"
+
+    run_hooks
   else
     luet_install "$ROOTFS_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}"
   fi
