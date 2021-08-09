@@ -39,7 +39,7 @@ export KEEP_LUET_DB=${KEEP_LUET_DB:-false}
 export CA_CERTIFICATES=${CA_CERTIFICATES:-/etc/ssl/certs/ca-certificates.crt}
 
 export LUET_GENISO_OUTPUT="${LUET_GENISO_OUTPUT:-$WORKDIR/luet_install.log}"
-
+export LUET_BOX_INSTALLER=${LUET_BOX_INSTALLER:-0}
 
 trap cleanup 1 2 3 6 EXIT
 
@@ -61,7 +61,6 @@ run_hooks()
 cleanup
 
 if [[ "$GEN_ROOTFS" == true ]]; then
-
   mkdir -p $WORKDIR
 
   rm -rf "$ROOTFS_DIR"
@@ -74,13 +73,26 @@ if [[ "$GEN_ROOTFS" == true ]]; then
     info "Building overlay"
     if [[ -n "$FIRST_STAGE" ]]; then
       info "Installing packages for initramfs"
-      luet_install "$ROOTFS_DIR" "${FIRST_STAGE}" "${LUET_INITRAMFS_REPOS}"
+      if [ ${LUET_BOX_INSTALLER} -eq 1 ] ; then
+        luet_box_install "$ROOTFS_DIR" "${FIRST_STAGE}" "${LUET_INITRAMFS_REPOS}"
+      else
+        luet_install "$ROOTFS_DIR" "${FIRST_STAGE}" "${LUET_INITRAMFS_REPOS}"
+      fi
     fi
-    luet_install "$OVERLAY_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}" "${KEEP_LUET_DB}"
+
+    if [ ${LUET_BOX_INSTALLER} -eq 1 ] ; then
+      luet_box_install "$OVERLAY_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}" "${KEEP_LUET_DB}"
+    else
+      luet_install "$OVERLAY_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}" "${KEEP_LUET_DB}"
+    fi
 
     run_hooks
   else
-    luet_install "$ROOTFS_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}"
+    if [ ${LUET_BOX_INSTALLER} -eq 1 ] ; then
+      luet_box_install "$ROOTFS_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}"
+    else
+      luet_install "$ROOTFS_DIR" "${LUET_PACKAGES}" "${LUET_REPOS}"
+    fi
   fi
 fi
 

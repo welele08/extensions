@@ -124,7 +124,74 @@ umount_rootfs() {
   ${SUDO} umount -l $rootfs/proc/  > /dev/null 2>&1 || true
 }
 
-# Misc functions
+# Automatically luet using box feature (pivot container)
+# on run finalizer if the target dir is != /.
+# In this case is not needed chroot.
+luet_box_install() {
+  local rootfs=$1
+  local packages="$2"
+  local repositories="$3"
+  local keep_db="$4"
+
+  export LUET_NOLOCK=true
+
+  # Create a valid FS structure in order to boot
+  # we shouldn't really care to do this here, but let packages instead create those on need.
+  # we do this here just for safety (who on earth would create a non-bootable ISO?)
+  for d in "/dev" "/sys" "/proc" "/tmp" "/dev/pt" "/run" "/var/lock" "/luetdb" "/etc"; do
+    mkdir -p ${rootfs}${d} || true
+  done
+
+  cp -rf "${LUET_CONFIG}" "$rootfs/luet.yaml"
+
+  # XXX: This is temporarly needed until we fix override from CLI of --system-target
+  #      and the --system-dbpath options
+  cat <<EOF > "$rootfs/luet.yaml"
+system:
+  rootfs: "$rootfs"
+  database_engine: "boltdb"
+repos_confdir:
+  - $rootfs/etc/luet/repos.conf.d
+repositories:
+- name: "mocaccino-repository-index"
+  description: "MocaccinoOS Repository index"
+  type: "http"
+  enable: true
+  cached: true
+  priority: 1
+  urls:
+  - "https://get.mocaccino.org/mocaccino-repository-index"
+
+EOF
+
+  # Required to connect to remote repositories
+  if [ ! -f "etc/resolv.conf" ]; then
+    echo "nameserver 8.8.8.8" > etc/resolv.conf
+  fi
+  if [ ! -f "etc/ssl/certs/ca-certificates.crt" ]; then
+    mkdir -p etc/ssl/certs
+    cp -rfv "${CA_CERTIFICATES}" etc/ssl/certs
+  fi
+
+  cp -rfv ${LUET_BIN} $rootfs/luet
+
+  if [ -n "${repositories}" ]; then
+    echo "Installing repositories ${repositories} in $rootfs, logs available at ${LUET_GENISO_OUTPUT}"
+    ${SUDO} luet install --config $rootfs/luet.yaml ${repositories} >> ${LUET_GENISO_OUTPUT} 2>&1
+  fi
+
+  echo "Installing packages ${packages} in $rootfs, logs available at ${LUET_GENISO_OUTPUT}"
+  ${SUDO} luet install --config $rootfs/luet.yaml ${packages} >> ${LUET_GENISO_OUTPUT} 2>&1
+  ${SUDO} luet cleanup --config $rootfs/luet.yaml
+
+  if [[ "$keep_db" != "true" ]]; then
+    rm -rf "$rootfs/var/luet/"
+    rm -rf "$rootfs/etc/luet/repos.conf.d/"
+  fi
+
+  mv "$rootfs/luet.yaml" "$rootfs/etc/luet/"
+}
+
 
 luet_install() {
   local rootfs=$1
